@@ -21,11 +21,14 @@ public class TCPClient {
 
     private ConnectionHandler connectionHandler;
     private ClientRouter router;
+    private H2Database h2db; // Instancia de la base de datos local
 
     public TCPClient(String ip, int port, String username) {
         this.ip = ip;
         this.port = port;
         this.username = username;
+        // Se inicializa la base de datos y se crean las tablas si no existen
+        this.h2db = new H2Database();
     }
 
     public void connect() throws IOException {
@@ -106,7 +109,13 @@ public class TCPClient {
         return null;
     }
 
+    /**
+     * Envía un mensaje de chat y lo guarda en la DB local H2.
+     */
     public void sendChatMessage(String content) {
+        // --- GUARDADO LOCAL ---
+        h2db.saveChatMessage(this.username, content);
+
         Map<String, Object> payload = new HashMap<>();
         payload.put("username", this.username);
         payload.put("message", content);
@@ -115,6 +124,9 @@ public class TCPClient {
         sendMessage(JSONSerializer.serialize(request));
     }
 
+    /**
+     * Prepara el envío de un archivo y guarda sus metadatos en la DB local H2.
+     */
     public void sendFile(File file) {
         pendingFiles.add(file);
 
@@ -123,6 +135,15 @@ public class TCPClient {
         if (i > 0) {
             extension = file.getName().substring(i);
         }
+
+        // --- GUARDADO LOCAL ---
+        h2db.saveDocument(
+                file.getName(),
+                file.length(),
+                extension,
+                "application/octet-stream",
+                this.username
+        );
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("filename", file.getName());
@@ -144,14 +165,12 @@ public class TCPClient {
         new Thread(() -> {
             System.out.println("Iniciando transferencia de subida (Nuevo Socket)...");
             try (Socket fileSocket = new Socket(ip, port);
-                    OutputStream os = fileSocket.getOutputStream();
-                    FileInputStream fis = new FileInputStream(file)) {
+                 OutputStream os = fileSocket.getOutputStream();
+                 FileInputStream fis = new FileInputStream(file)) {
 
-                // Enviar token
                 os.write((token + "\n").getBytes(StandardCharsets.UTF_8));
                 os.flush();
 
-                // Enviar archivo
                 byte[] buffer = new byte[8192];
                 int bytesRead;
                 while ((bytesRead = fis.read(buffer)) != -1) {
@@ -213,7 +232,7 @@ public class TCPClient {
                 directory.mkdirs();
 
             File targetFile = new File(directory, finalFilename);
-            // Lógica para evitar sobreescribir: nombre (1).ext, nombre (2).ext, etc.
+
             if (targetFile.exists()) {
                 String nameOnly = finalFilename;
                 String extension = "";
@@ -232,15 +251,13 @@ public class TCPClient {
 
             boolean success = false;
             try (Socket fileSocket = new Socket(ip, port);
-                    OutputStream os = fileSocket.getOutputStream();
-                    InputStream is = fileSocket.getInputStream();
-                    FileOutputStream fos = new FileOutputStream(targetFile)) {
+                 OutputStream os = fileSocket.getOutputStream();
+                 InputStream is = fileSocket.getInputStream();
+                 FileOutputStream fos = new FileOutputStream(targetFile)) {
 
-                // Enviar token
                 os.write((token + "\n").getBytes(StandardCharsets.UTF_8));
                 os.flush();
 
-                // Recibir archivo
                 byte[] buffer = new byte[8192];
                 int bytesRead;
                 long totalRead = 0;

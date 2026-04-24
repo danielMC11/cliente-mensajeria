@@ -183,6 +183,13 @@ public class Dashboard extends JFrame {
         final File[][] archivosSeleccionados = { null };
 
         btnSeleccionar.addActionListener(e -> {
+
+            try {
+                UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setMultiSelectionEnabled(true);
             int option = fileChooser.showOpenDialog(ventana);
