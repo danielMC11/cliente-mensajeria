@@ -21,9 +21,11 @@ public class Dashboard extends JFrame {
     private JRadioButton rbArchivos, rbMensajes;
     private TCPClient tcpClient;
     private JLabel lblStatus;
+    private config.UDPClient udpClient;
 
-    public Dashboard(String username, String ip, String puerto, TCPClient tcpClient) {
+    public Dashboard(String username, String ip, String puerto, TCPClient tcpClient, config.UDPClient udpClient) {
         this.tcpClient = tcpClient;
+        this.udpClient = udpClient;
         setTitle("Dashboard - " + username + " conectado a " + ip);
         setSize(1250, 700);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -70,7 +72,20 @@ public class Dashboard extends JFrame {
 
         setLocationRelativeTo(null);
     }
-
+    public void enviarPeticion(String accion) {
+        if (tcpClient != null) {
+            // Si es TCP, usamos los métodos que ya tienes
+            switch(accion) {
+                case "LIST_CLIENTS": tcpClient.sendListClientsAction(); break;
+                case "LIST_LOGS": tcpClient.sendListLogsAction(); break;
+                case "LIST_DOCUMENTS": tcpClient.sendListDocumentsAction(); break;
+                case "LIST_MESSAGES": tcpClient.sendListMessagesAction(); break;
+            }
+        } else if (udpClient != null) {
+            // Si es UDP, usamos el nuevo método genérico
+            udpClient.sendActionAsync(accion, new java.util.HashMap<>());
+        }
+    }
     private JButton crearBotonDesconectar() {
         JButton btnDesconectar = new JButton("Desconectar");
         btnDesconectar.setForeground(new Color(150, 0, 0));
@@ -142,23 +157,23 @@ public class Dashboard extends JFrame {
         btnFiltrar.addActionListener(e -> {
             if (rbArchivos.isSelected()) {
                 cardLayout.show(pnlCartas, "TABLA_ARCHIVOS");
-                tcpClient.sendListDocumentsAction();
+                enviarPeticion("LIST_DOCUMENTS"); // <-- CAMBIADO
             } else {
                 cardLayout.show(pnlCartas, "TABLA_MENSAJES");
-                tcpClient.sendListMessagesAction();
+                enviarPeticion("LIST_MESSAGES");
             }
         });
 
         btnRefresh.addActionListener(e -> {
             if (rbArchivos.isSelected()) {
-                tcpClient.sendListDocumentsAction();
+                enviarPeticion("LIST_DOCUMENTS");
             } else {
-                tcpClient.sendListMessagesAction();
+                enviarPeticion("LIST_MESSAGES");
             }
         });
 
-        panelClientes.setRefreshAction(e -> tcpClient.sendListClientsAction());
-        panelLogs.setRefreshAction(e -> tcpClient.sendListLogsAction());
+        panelClientes.setRefreshAction(e -> enviarPeticion("LIST_CLIENTS")); // <-- CAMBIADO
+        panelLogs.setRefreshAction(e -> enviarPeticion("LIST_LOGS")); // <-- CAMBIADO
 
         btnEnviarArch.addActionListener(e -> abrirVentanaEnvioArchivo());
         btnEnviarMsg.addActionListener(e -> abrirVentanaEnvioMensaje());

@@ -65,7 +65,7 @@ public class VentanaConexion extends JFrame {
                         
                         // Si la conexión es exitosa, abrir el dashboard en el hilo de UI
                         SwingUtilities.invokeLater(() -> {
-                            Dashboard dashboard = new Dashboard(username, ip, String.valueOf(puerto), client);
+                            Dashboard dashboard = new Dashboard(username, ip, String.valueOf(puerto), client, null);
                             router.setDashboard(dashboard);
                             dashboard.setVisible(true);
                             this.dispose();
@@ -78,10 +78,30 @@ public class VentanaConexion extends JFrame {
                     }
                 }).start();
             } else {
-                // Lógica UDP pendiente o similar
-                System.out.println("Conectando via UDP (No implementado)...");
-                new Dashboard(username, ip, String.valueOf(puerto), null).setVisible(true);
-                this.dispose();
+                // --- LÓGICA UDP ---
+                new Thread(() -> {
+                    try {
+                        config.ClientRouter router = new config.ClientRouter();
+                        config.UDPClient udpClient = new config.UDPClient(ip, puerto, username, router);
+
+                        // Enviar el ping de "conexión"
+                        udpClient.connect();
+
+                        // Abrir el dashboard pasándole el cliente UDP (y null al TCP)
+                        SwingUtilities.invokeLater(() -> {
+                            // Nota: Actualizaremos el constructor del Dashboard en el paso 3
+                            Dashboard dashboard = new Dashboard(username, ip, String.valueOf(puerto), null, udpClient);
+                            router.setDashboard(dashboard);
+                            dashboard.setVisible(true);
+                            this.dispose();
+                        });
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                        SwingUtilities.invokeLater(() ->
+                                JOptionPane.showMessageDialog(this, "Error al preparar UDP: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE)
+                        );
+                    }
+                }).start();
             }
         });
 
