@@ -58,11 +58,14 @@ public class ComponenteTablaMensajes extends JPanel {
         modelo.setRowCount(0);
         if (mensajes == null) return;
         for (java.util.Map<String, Object> m : mensajes) {
+            // Adaptado al nuevo formato: usamos 'propietario' y 'contenido'
+            // document_id y nombre podrían venir o no, los manejamos con seguridad
             String id = m.get("document_id") != null ? m.get("document_id").toString() : "";
-            String nombre = (String) m.get("nombre");
-            String emisor = (String) m.get("emisor");
+            String nombre = m.get("nombre") != null ? m.get("nombre").toString() : "mensaje.txt";
+            String propietario = (String) m.get("propietario");
             String contenido = (String) m.get("contenido");
-            modelo.addRow(new Object[] { id, nombre, emisor, contenido, "" });
+            
+            modelo.addRow(new Object[] { id, nombre, propietario, contenido, "" });
         }
     }
 }
