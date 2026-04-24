@@ -94,14 +94,18 @@ public class TCPClient {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             int b;
             while ((b = rawIn.read()) != -1) {
-                if (b == '\n') break;
-                if (b != '\r') baos.write(b);
+                if (b == '\n')
+                    break;
+                if (b != '\r')
+                    baos.write(b);
             }
-            if (b == -1 && baos.size() == 0) return null;
+            if (b == -1 && baos.size() == 0)
+                return null;
             return baos.toString(StandardCharsets.UTF_8.name());
         }
         return null;
     }
+
     public void sendChatMessage(String content) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("username", this.username);
@@ -134,13 +138,14 @@ public class TCPClient {
 
     public void startFileTransfer(String token) {
         File file = pendingFiles.poll();
-        if (file == null) return;
+        if (file == null)
+            return;
 
         new Thread(() -> {
             System.out.println("Iniciando transferencia de subida (Nuevo Socket)...");
             try (Socket fileSocket = new Socket(ip, port);
-                 OutputStream os = fileSocket.getOutputStream();
-                 FileInputStream fis = new FileInputStream(file)) {
+                    OutputStream os = fileSocket.getOutputStream();
+                    FileInputStream fis = new FileInputStream(file)) {
 
                 // Enviar token
                 os.write((token + "\n").getBytes(StandardCharsets.UTF_8));
@@ -176,7 +181,8 @@ public class TCPClient {
         pendingDownloadMetadata.add(new DownloadMetadata(docId, filename, format));
         Map<String, Object> payload = new HashMap<>();
         payload.put("document_id", Long.parseLong(docId));
-        if (format != null && !format.isEmpty()) payload.put("format", format);
+        if (format != null && !format.isEmpty())
+            payload.put("format", format);
 
         MessageRequest request = new MessageRequest("DOWNLOAD_INIT", payload);
         sendMessage(JSONSerializer.serialize(request));
@@ -184,26 +190,50 @@ public class TCPClient {
 
     public void startDownloadTransfer(String token, long size) {
         DownloadMetadata metadata = pendingDownloadMetadata.poll();
-        if (metadata == null) return;
+        if (metadata == null)
+            return;
 
         new Thread(() -> {
             System.out.println("Iniciando transferencia de descarga (Nuevo Socket) de " + size + " bytes...");
-            
+
             String subDir = "";
             String finalFilename = metadata.filename;
-            if ("ORG".equals(metadata.format)) subDir = "original";
-            else if ("ENC".equals(metadata.format)) subDir = "encriptado";
-            else if ("HSH".equals(metadata.format)) { subDir = "hash"; finalFilename += ".txt"; }
+            if ("ORG".equals(metadata.format))
+                subDir = "original";
+            else if ("ENC".equals(metadata.format))
+                subDir = "encriptado";
+            else if ("HSH".equals(metadata.format)) {
+                subDir = "hash";
+                finalFilename += ".txt";
+            }
 
             File directory = new File("descargas/" + subDir);
-            if (!directory.exists()) directory.mkdirs();
+            if (!directory.exists())
+                directory.mkdirs();
+
             File targetFile = new File(directory, finalFilename);
+            // Lógica para evitar sobreescribir: nombre (1).ext, nombre (2).ext, etc.
+            if (targetFile.exists()) {
+                String nameOnly = finalFilename;
+                String extension = "";
+                int dotIndex = finalFilename.lastIndexOf('.');
+                if (dotIndex > 0) {
+                    nameOnly = finalFilename.substring(0, dotIndex);
+                    extension = finalFilename.substring(dotIndex);
+                }
+
+                int count = 1;
+                while (targetFile.exists()) {
+                    targetFile = new File(directory, nameOnly + " (" + count + ")" + extension);
+                    count++;
+                }
+            }
 
             boolean success = false;
             try (Socket fileSocket = new Socket(ip, port);
-                 OutputStream os = fileSocket.getOutputStream();
-                 InputStream is = fileSocket.getInputStream();
-                 FileOutputStream fos = new FileOutputStream(targetFile)) {
+                    OutputStream os = fileSocket.getOutputStream();
+                    InputStream is = fileSocket.getInputStream();
+                    FileOutputStream fos = new FileOutputStream(targetFile)) {
 
                 // Enviar token
                 os.write((token + "\n").getBytes(StandardCharsets.UTF_8));
@@ -213,7 +243,8 @@ public class TCPClient {
                 byte[] buffer = new byte[8192];
                 int bytesRead;
                 long totalRead = 0;
-                while (totalRead < size && (bytesRead = is.read(buffer, 0, (int)Math.min(buffer.length, size - totalRead))) != -1) {
+                while (totalRead < size
+                        && (bytesRead = is.read(buffer, 0, (int) Math.min(buffer.length, size - totalRead))) != -1) {
                     fos.write(buffer, 0, bytesRead);
                     totalRead += bytesRead;
                 }
@@ -232,9 +263,13 @@ public class TCPClient {
     }
 
     public void disconnect() throws IOException {
-        if (connectionHandler != null) connectionHandler.stop();
-        if (out != null) out.close();
-        if (rawIn != null) rawIn.close();
-        if (socket != null) socket.close();
+        if (connectionHandler != null)
+            connectionHandler.stop();
+        if (out != null)
+            out.close();
+        if (rawIn != null)
+            rawIn.close();
+        if (socket != null)
+            socket.close();
     }
 }
