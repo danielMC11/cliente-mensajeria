@@ -2,25 +2,50 @@ package ui.componentes;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.List;
+import java.util.Map;
 
 public class ComponenteClientes extends JPanel {
+    private DefaultListModel<String> modeloLista;
+    private JList<String> lista;
+
+    private JButton btnRefresh;
+
     public ComponenteClientes() {
         setLayout(new BorderLayout());
-        setBorder(BorderFactory.createTitledBorder("Clientes Conectados (4/10)"));
+        setBorder(BorderFactory.createTitledBorder("Clientes Conectados"));
         setPreferredSize(new Dimension(220, 0));
 
-        DefaultListModel<String> modeloLista = new DefaultListModel<>();
-        // Llenado de ejemplo
-        for(int i=1; i<=30; i++) {
-            modeloLista.addElement("<html>IP: 192.168.1." + i + "<br/><font color='gray'>Conexión: 10:00:0" + i + "</font></html>");
-        }
+        btnRefresh = new JButton("Refrescar Clientes");
+        btnRefresh.setFont(new Font("SansSerif", Font.PLAIN, 10));
 
-        JList<String> lista = new JList<>(modeloLista);
+        modeloLista = new DefaultListModel<>();
+        lista = new JList<>(modeloLista);
+        lista.setSelectionBackground(lista.getBackground());
+        lista.setSelectionForeground(lista.getForeground());
+        lista.setFocusable(false);
 
-        // AGREGAR SCROLL BAR
         JScrollPane scroll = new JScrollPane(lista);
         scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
 
+        add(btnRefresh, BorderLayout.NORTH);
         add(scroll, BorderLayout.CENTER);
+    }
+
+    public void setRefreshAction(java.awt.event.ActionListener al) {
+        btnRefresh.addActionListener(al);
+    }
+
+
+    public void updateClients(List<Map<String, Object>> clientes) {
+        modeloLista.clear();
+        setBorder(BorderFactory.createTitledBorder("Clientes Conectados (" + clientes.size() + ")"));
+        for (Map<String, Object> cliente : clientes) {
+            String username = (String) cliente.get("username");
+            String ip = (String) cliente.get("ip");
+            String fecha = (String) cliente.get("fecha_inicio");
+            
+            modeloLista.addElement("<html><b>" + username + "</b><br/>IP: " + ip + "<br/><font color='gray'>Desde: " + fecha + "</font></html>");
+        }
     }
 }

@@ -2,19 +2,21 @@ package ui.componentes;
 
 import javax.swing.*;
 import java.awt.*;
-
-import javax.swing.*;
-import java.awt.*;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
 public class ComponenteLogs extends JPanel {
     private JTextArea areaTexto;
 
+    private JButton btnRefresh;
+
     public ComponenteLogs() {
         setLayout(new BorderLayout());
         setBorder(BorderFactory.createTitledBorder("INFORME LOGS"));
         setPreferredSize(new Dimension(280, 0));
+
+        btnRefresh = new JButton("Refrescar Logs");
+        btnRefresh.setFont(new Font("SansSerif", Font.PLAIN, 10));
 
         areaTexto = new JTextArea();
         areaTexto.setEditable(false);
@@ -25,33 +27,50 @@ public class ComponenteLogs extends JPanel {
         scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
+        add(btnRefresh, BorderLayout.NORTH);
         add(scroll, BorderLayout.CENTER);
-
-        // --- DATOS DE EJEMPLO PARA RELLENAR EL SCROLL ---
-        insertarDatosIniciales();
     }
 
-    private void insertarDatosIniciales() {
-        registrarEvento("SYSTEM: Servidor iniciado en puerto 8090");
-        registrarEvento("IP 192.168.1.6: CONNECTED");
-        registrarEvento("IP 192.168.1.6: UPLOAD \"informe.pdf\" (1.4MB) - SUCCESS");
-        registrarEvento("IP 192.168.1.6: SEND_MSG \"Hola a todos, acabo de subir...\"");
-        registrarEvento("IP 192.168.1.4: CONNECTED");
-        registrarEvento("IP 192.168.1.7: CONNECTED");
-        registrarEvento("IP 192.168.1.6: DISCONNECTED (User logout)");
-        registrarEvento("IP 192.168.1.7: UPLOAD \"gato.jpg\" (6.7MB) - SUCCESS");
-        registrarEvento("IP 192.168.1.4: DOWNLOAD \"informe.pdf\" - SUCCESS");
-        registrarEvento("IP 192.168.1.9: CONNECTED");
-        registrarEvento("IP 192.168.1.7: UPLOAD \"shrek.mp4\" (1200MB) - SUCCESS");
-        registrarEvento("IP 192.168.1.7: DOWNLOAD \"shrek.mp4\" (Encrypted) - SUCCESS");
-        registrarEvento("SYSTEM: Backup automático de base de datos finalizado");
-        registrarEvento("IP 192.168.1.4: ATTEMPT_DOWNLOAD \"shrek.mp4\" - ERROR: Key mismatch");
-        registrarEvento("IP 192.168.1.12: SYSTEM_PING - Latency: 14ms");
-        registrarEvento("IP 192.168.1.9: SEND_MSG \"¿Alguien tiene la llave para el video?\"");
-        registrarEvento("IP 192.168.1.7: SEND_MSG \"Yo te la paso por privado\"");
-        registrarEvento("IP 192.168.1.4: DISCONNECTED (Timeout)");
-        registrarEvento("SYSTEM: Limpieza de archivos temporales ejecutada");
-        registrarEvento("IP 192.168.1.15: CONNECTION_REJECTED (Invalid Protocol)");
+    public void setRefreshAction(java.awt.event.ActionListener al) {
+        btnRefresh.addActionListener(al);
+    }
+
+
+
+    public void limpiarLogs() {
+        areaTexto.setText("");
+    }
+
+    public void updateLogs(java.util.List<java.util.Map<String, Object>> logs) {
+        limpiarLogs();
+        if (logs == null) return;
+        for (java.util.Map<String, Object> log : logs) {
+            try {
+                String sender   = nullSafe(log.get("sender"));
+                String action   = nullSafe(log.get("action"));
+                String status   = nullSafe(log.get("status"));
+                String details  = nullSafe(log.get("details"));
+                String createdAt = log.get("timestamp") != null
+                        ? log.get("timestamp").toString()
+                        : (log.get("created_at") != null ? log.get("created_at").toString() : "--");
+
+                String docId   = nullSafe(log.get("document_id"));
+                String docPart = !docId.trim().isEmpty() ? " [Doc: " + docId + "]" : "";
+
+                String logLine = String.format("[%s] %s: %s%s (%s) - %s",
+                        createdAt, sender, action, docPart, status, details);
+                areaTexto.append(logLine + "\n");
+            } catch (Exception ex) {
+                areaTexto.append("[LOG ERROR] " + ex.getMessage() + "\n");
+            }
+        }
+        SwingUtilities.invokeLater(() -> {
+            areaTexto.setCaretPosition(areaTexto.getDocument().getLength());
+        });
+    }
+
+    private String nullSafe(Object o) {
+        return o != null ? o.toString() : "";
     }
 
     public void registrarEvento(String mensaje) {

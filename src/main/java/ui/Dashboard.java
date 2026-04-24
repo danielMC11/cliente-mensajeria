@@ -1,5 +1,6 @@
 package ui;
 
+import config.TCPClient;
 import ui.componentes.ComponenteClientes;
 import ui.componentes.ComponenteLogs;
 import ui.componentes.ComponenteTablaArchivos;
@@ -7,6 +8,7 @@ import ui.componentes.ComponenteTablaMensajes;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.File;
 
 public class Dashboard extends JFrame {
     private CardLayout cardLayout = new CardLayout();
@@ -16,9 +18,12 @@ public class Dashboard extends JFrame {
     private ComponenteTablaArchivos tablaArchivos;
     private ComponenteTablaMensajes tablaMensajes;
     private JRadioButton rbArchivos, rbMensajes;
+    private TCPClient tcpClient;
+    private JLabel lblStatus;
 
-    public Dashboard(String ip, String puerto) {
-        setTitle("Dashboard - Conectado a " + ip);
+    public Dashboard(String username, String ip, String puerto, TCPClient tcpClient) {
+        this.tcpClient = tcpClient;
+        setTitle("Dashboard - " + username + " conectado a " + ip);
         setSize(1250, 700);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLayout(new BorderLayout(5, 5));
@@ -37,7 +42,7 @@ public class Dashboard extends JFrame {
 
         JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.LEFT));
         pnlFooter.setBackground(new Color(230, 230, 230));
-        JLabel lblStatus = new JLabel(" CONECTADO A IP DEL SERVIDOR: " + ip + " EN PUERTO: " + puerto);
+        lblStatus = new JLabel(" USUARIO: " + username + " | CONECTADO A: " + ip + " | PUERTO: " + puerto);
         lblStatus.setFont(new Font("SansSerif", Font.BOLD, 12));
         pnlFooter.add(lblStatus);
 
@@ -53,8 +58,29 @@ public class Dashboard extends JFrame {
         setLocationRelativeTo(null);
     }
 
+    public ComponenteClientes getPanelClientes() {
+        return panelClientes;
+    }
+
+    public ComponenteLogs getPanelLogs() {
+        return panelLogs;
+    }
+
+    public TCPClient getTcpClient() {
+        return tcpClient;
+    }
+
+    public ComponenteTablaArchivos getTablaArchivos() {
+        return tablaArchivos;
+    }
+
+    public ComponenteTablaMensajes getTablaMensajes() {
+        return tablaMensajes;
+    }
+
     private JPanel crearPanelHerramientas() {
-        // Usamos un BorderLayout interno para poder mandar el botón de desconectar a la derecha
+        // Usamos un BorderLayout interno para poder mandar el botón de desconectar a la
+        // derecha
         JPanel pnlPrincipal = new JPanel(new BorderLayout());
 
         // Panel izquierdo para las opciones normales
@@ -69,20 +95,34 @@ public class Dashboard extends JFrame {
         JButton btnFiltrar = new JButton("Filtrar");
         JButton btnEnviarArch = new JButton("Enviar Archivo");
         JButton btnEnviarMsg = new JButton("Enviar Mensaje");
+        JButton btnRefresh = new JButton("Refrescar Tablas");
 
         // --- BOTÓN DESCONECTAR ---
         JButton btnDesconectar = new JButton("Desconectar");
         btnDesconectar.setForeground(new Color(150, 0, 0)); // Color rojo oscuro para advertir
         btnDesconectar.setFont(new Font("SansSerif", Font.BOLD, 12));
 
-        // Lógica de intercambio de tablas
+        // Lógica de intercambio de tablas y filtrado (ahora pide al servidor)
         btnFiltrar.addActionListener(e -> {
+            cardLayout.show(pnlCartas, "TABLA_ARCHIVOS");
             if (rbArchivos.isSelected()) {
-                cardLayout.show(pnlCartas, "TABLA_ARCHIVOS");
+                tcpClient.sendListDocumentsAction();
             } else {
-                cardLayout.show(pnlCartas, "TABLA_MENSAJES");
+                tcpClient.sendListMessagesAction();
             }
         });
+
+        // --- LÓGICA DE REFRESCO ---
+        btnRefresh.addActionListener(e -> {
+            if (rbArchivos.isSelected()) {
+                tcpClient.sendListDocumentsAction();
+            } else {
+                tcpClient.sendListMessagesAction();
+            }
+        });
+
+        panelClientes.setRefreshAction(e -> tcpClient.sendListClientsAction());
+        panelLogs.setRefreshAction(e -> tcpClient.sendListLogsAction());
 
         // Lógica de desconexión
         btnDesconectar.addActionListener(e -> {
@@ -91,7 +131,13 @@ public class Dashboard extends JFrame {
                     "Confirmar desconexión", JOptionPane.YES_NO_OPTION);
 
             if (confirm == JOptionPane.YES_OPTION) {
-                // Aquí cerrarías los sockets en una app real
+                try {
+                    if (tcpClient != null) {
+                        tcpClient.disconnect();
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
                 new VentanaConexion().setVisible(true);
                 this.dispose();
             }
@@ -107,6 +153,7 @@ public class Dashboard extends JFrame {
         pnlIzquierdo.add(new JSeparator(SwingConstants.VERTICAL));
         pnlIzquierdo.add(btnEnviarArch);
         pnlIzquierdo.add(btnEnviarMsg);
+        pnlIzquierdo.add(btnRefresh);
 
         // Panel derecho para Desconectar
         JPanel pnlDerecho = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -123,13 +170,44 @@ public class Dashboard extends JFrame {
         ventana.setLayout(new FlowLayout());
         JButton btnSeleccionar = new JButton("Seleccionar archivo(s)");
         JButton btnEnviar = new JButton("Enviar");
+        btnEnviar.setEnabled(false);
+        JLabel lblArchivo = new JLabel("Ningún archivo seleccionado");
+
+        final File[][] archivosSeleccionados = { null };
+
+        btnSeleccionar.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setMultiSelectionEnabled(true);
+            int option = fileChooser.showOpenDialog(ventana);
+            if (option == JFileChooser.APPROVE_OPTION) {
+                File[] seleccionados = fileChooser.getSelectedFiles();
+                if (seleccionados == null || seleccionados.length == 0) {
+                    File single = fileChooser.getSelectedFile();
+                    if (single != null) seleccionados = new File[]{single};
+                }
+                if (seleccionados != null && seleccionados.length > 0) {
+                    archivosSeleccionados[0] = seleccionados;
+                    lblArchivo.setText(seleccionados.length + " archivo(s) seleccionado(s)");
+                    btnEnviar.setEnabled(true);
+                }
+            }
+        });
 
         btnEnviar.addActionListener(e -> {
-            btnEnviar.setEnabled(false);
-            btnEnviar.setText("Cargando...");
+            if (archivosSeleccionados[0] != null) {
+                btnEnviar.setEnabled(false);
+                btnEnviar.setText("Enviando...");
+                for (File f : archivosSeleccionados[0]) {
+                    if (tcpClient != null) {
+                        tcpClient.sendFile(f);
+                    }
+                }
+                ventana.dispose();
+            }
         });
 
         ventana.add(btnSeleccionar);
+        ventana.add(lblArchivo);
         ventana.add(btnEnviar);
         ventana.setSize(400, 150);
         ventana.setLocationRelativeTo(this);

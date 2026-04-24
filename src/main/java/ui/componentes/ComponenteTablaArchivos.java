@@ -3,26 +3,31 @@ package ui.componentes;
 import javax.swing.*;
 import javax.swing.table.*;
 import java.awt.*;
-import javax.swing.*;
-import javax.swing.table.*;
-import java.awt.*;
+import java.util.List;
+import java.util.Map;
 
 public class ComponenteTablaArchivos extends JPanel {
+    private DefaultTableModel modelo;
+    private JTable tabla;
+
     public ComponenteTablaArchivos() {
         setLayout(new BorderLayout());
-        String[] columnas = {"Nombre", "Tamaño", "Extensión", "Propietario", "Descargar"};
-        DefaultTableModel modelo = new DefaultTableModel(columnas, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return c == 4; }
+        String[] columnas = { "Nombre", "Tamaño", "Extensión", "Propietario", "Descargar" };
+        modelo = new DefaultTableModel(columnas, 0) {
+            @Override
+            public boolean isCellEditable(int r, int c) {
+                return c == 4;
+            }
         };
 
-        JTable tabla = new JTable(modelo);
+        tabla = new JTable(modelo);
         tabla.setRowHeight(45);
         tabla.setRowSelectionAllowed(false); // Desactiva la selección de filas
         tabla.setCellSelectionEnabled(false); // Desactiva la selección de celdas
         tabla.setFocusable(false);
 
-        modelo.addRow(new Object[]{"informe", "1.4 MB", ".pdf", "192.168.1.6", ""});
-        modelo.addRow(new Object[]{"shrek", "1200 MB", ".mp4", "192.168.1.7", ""});
+        TableColumn colPropietario = tabla.getColumnModel().getColumn(3);
+        colPropietario.setPreferredWidth(250);
 
         TableColumn col = tabla.getColumnModel().getColumn(4);
         col.setPreferredWidth(320);
@@ -30,5 +35,34 @@ public class ComponenteTablaArchivos extends JPanel {
         col.setCellEditor(new EditorGenerico(tabla, true));
 
         add(new JScrollPane(tabla), BorderLayout.CENTER);
+    }
+
+    public void updateFiles(List<Map<String, Object>> documentos) {
+        modelo.setRowCount(0);
+        if (documentos == null) return;
+        for (Map<String, Object> doc : documentos) {
+            String nombre = (String) doc.get("nombre");
+            String extension = (String) doc.get("extension");
+            String propietario = (String) doc.get("propietario");
+            
+            // Formatear tamaño
+            String tamanoStr = "0 B";
+            Object sizeObj = doc.get("tamano_bytes");
+            if (sizeObj != null) {
+                try {
+                    long bytes = Long.parseLong(sizeObj.toString());
+                    tamanoStr = formatSize(bytes);
+                } catch (Exception e) {}
+            }
+
+            modelo.addRow(new Object[]{nombre, tamanoStr, extension, propietario, ""});
+        }
+    }
+
+    private String formatSize(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        int exp = (int) (Math.log(bytes) / Math.log(1024));
+        String pre = "KMGTPE".charAt(exp-1) + "B";
+        return String.format("%.1f %s", bytes / Math.pow(1024, exp), pre);
     }
 }
