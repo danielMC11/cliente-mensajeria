@@ -17,8 +17,10 @@ public class TCPClient {
     private int port;
     private String username;
     private Queue<File> pendingFiles = new ConcurrentLinkedQueue<>();
+    private Queue<DownloadMetadata> pendingDownloadMetadata = new ConcurrentLinkedQueue<>();
 
     private ConnectionHandler connectionHandler;
+    private ClientRouter router;
 
     public TCPClient(String ip, int port, String username) {
         this.ip = ip;
@@ -37,6 +39,7 @@ public class TCPClient {
     }
 
     public void startListening(ClientRouter router) {
+        this.router = router;
         this.connectionHandler = new ConnectionHandler(this, router);
         new Thread(this.connectionHandler).start();
     }
@@ -113,7 +116,7 @@ public class TCPClient {
         payload.put("filename", file.getName());
         payload.put("size", file.length());
         payload.put("extension", extension);
-        payload.put("mimeType", "application/octet-stream"); // Placeholder
+        payload.put("mimeType", "application/octet-stream");
         payload.put("username", this.username);
 
         MessageRequest request = new MessageRequest("UPLOAD_INIT", payload);
@@ -123,41 +126,31 @@ public class TCPClient {
 
     public void startFileTransfer(String token) {
         File file = pendingFiles.poll();
-        if (file == null) {
-            System.err.println("No hay archivos pendientes para transferir.");
-            return;
-        }
+        if (file == null) return;
 
         new Thread(() -> {
-            try {
-                OutputStream os = socket.getOutputStream();
+            System.out.println("Iniciando transferencia de subida (Nuevo Socket)...");
+            try (Socket fileSocket = new Socket(ip, port);
+                 OutputStream os = fileSocket.getOutputStream();
+                 FileInputStream fis = new FileInputStream(file)) {
 
-                // Enviar el token seguido de un salto de línea
-                String tokenLine = token + "\n";
-                os.write(tokenLine.getBytes(StandardCharsets.UTF_8));
+                // Enviar token
+                os.write((token + "\n").getBytes(StandardCharsets.UTF_8));
+                os.flush();
 
-                // Enviar el contenido del archivo
-                System.out.println("Enviando bytes del archivo: " + file.getName());
-                try (FileInputStream fis = new FileInputStream(file)) {
-                    byte[] buffer = new byte[4096];
-                    int bytesRead;
-                    while ((bytesRead = fis.read(buffer)) != -1) {
-                        os.write(buffer, 0, bytesRead);
-                    }
+                // Enviar archivo
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                while ((bytesRead = fis.read(buffer)) != -1) {
+                    os.write(buffer, 0, bytesRead);
                 }
-                os.flush(); // IMPORTANTE: no cerrar el socket, solo hacer flush
-                System.out.println("Bytes del archivo " + file.getName() + " enviados.");
+                os.flush();
+                System.out.println("Subida finalizada y socket de archivo cerrado.");
             } catch (IOException e) {
-                e.printStackTrace();
+                System.err.println("Error en subida: " + e.getMessage());
             }
         }).start();
     }
-
-    public Socket getSocket() {
-        return socket;
-    }
-
-    private Queue<DownloadMetadata> pendingDownloadMetadata = new ConcurrentLinkedQueue<>();
 
     private static class DownloadMetadata {
         String docId;
@@ -173,12 +166,9 @@ public class TCPClient {
 
     public void requestDownload(String docId, String filename, String format) {
         pendingDownloadMetadata.add(new DownloadMetadata(docId, filename, format));
-
         Map<String, Object> payload = new HashMap<>();
         payload.put("document_id", Long.parseLong(docId));
-        if (format != null && !format.isEmpty()) {
-            payload.put("format", format);
-        }
+        if (format != null && !format.isEmpty()) payload.put("format", format);
 
         MessageRequest request = new MessageRequest("DOWNLOAD_INIT", payload);
         sendMessage(JSONSerializer.serialize(request));
@@ -189,43 +179,54 @@ public class TCPClient {
         if (metadata == null) return;
 
         new Thread(() -> {
-            try {
-                OutputStream os = socket.getOutputStream();
-                String tokenLine = token + "\n";
-                os.write(tokenLine.getBytes(StandardCharsets.UTF_8));
+            System.out.println("Iniciando transferencia de descarga (Nuevo Socket) de " + size + " bytes...");
+            
+            String subDir = "";
+            String finalFilename = metadata.filename;
+            if ("ORG".equals(metadata.format)) subDir = "original";
+            else if ("ENC".equals(metadata.format)) subDir = "encriptado";
+            else if ("HSH".equals(metadata.format)) { subDir = "hash"; finalFilename += ".txt"; }
+
+            File directory = new File("descargas/" + subDir);
+            if (!directory.exists()) directory.mkdirs();
+            File targetFile = new File(directory, finalFilename);
+
+            boolean success = false;
+            try (Socket fileSocket = new Socket(ip, port);
+                 OutputStream os = fileSocket.getOutputStream();
+                 InputStream is = fileSocket.getInputStream();
+                 FileOutputStream fos = new FileOutputStream(targetFile)) {
+
+                // Enviar token
+                os.write((token + "\n").getBytes(StandardCharsets.UTF_8));
                 os.flush();
 
-                String subDir = "";
-                String finalFilename = metadata.filename;
-                if ("ORG".equals(metadata.format)) subDir = "original";
-                else if ("ENC".equals(metadata.format)) subDir = "encriptado";
-                else if ("HSH".equals(metadata.format)) {
-                    subDir = "hash";
-                    finalFilename += ".txt";
+                // Recibir archivo
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                long totalRead = 0;
+                while (totalRead < size && (bytesRead = is.read(buffer, 0, (int)Math.min(buffer.length, size - totalRead))) != -1) {
+                    fos.write(buffer, 0, bytesRead);
+                    totalRead += bytesRead;
                 }
-
-                File directory = new File("descargas/" + subDir);
-                if (!directory.exists()) directory.mkdirs();
-
-                File targetFile = new File(directory, finalFilename);
-                System.out.println("Esperando descarga de " + size + " bytes en: " + targetFile.getAbsolutePath());
-
-                // Notificar al ConnectionHandler para que tome el control de la lectura binaria
-                connectionHandler.setDownloading(true, targetFile, size);
-
+                fos.flush();
+                success = (totalRead == size);
+                System.out.println("Descarga finalizada. Éxito: " + success);
             } catch (IOException e) {
-                e.printStackTrace();
+                System.err.println("Error en descarga: " + e.getMessage());
+                success = false;
+            }
+
+            if (router != null) {
+                router.notifyDownloadResult(success, targetFile.getName());
             }
         }).start();
     }
 
     public void disconnect() throws IOException {
-        if (connectionHandler != null) {
-            connectionHandler.stop();
-        }
+        if (connectionHandler != null) connectionHandler.stop();
         if (out != null) out.close();
         if (rawIn != null) rawIn.close();
         if (socket != null) socket.close();
-        System.out.println("Desconectado.");
     }
 }
