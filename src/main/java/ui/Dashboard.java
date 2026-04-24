@@ -78,6 +78,12 @@ public class Dashboard extends JFrame {
         return tablaMensajes;
     }
 
+    public void iniciarDescarga(String docId, String filename, String format) {
+        if (tcpClient != null) {
+            tcpClient.requestDownload(docId, filename, format);
+        }
+    }
+
     private JPanel crearPanelHerramientas() {
         // Usamos un BorderLayout interno para poder mandar el botón de desconectar a la
         // derecha

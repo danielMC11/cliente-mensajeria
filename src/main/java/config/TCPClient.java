@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class TCPClient {
     private Socket socket;
     private PrintWriter out;
-    private BufferedReader in;
+    private InputStream rawIn;
     private String ip;
     private int port;
     private String username;
@@ -30,7 +30,7 @@ public class TCPClient {
         System.out.println("Intentando conectar a " + ip + ":" + port + "...");
         socket = new Socket(ip, port);
         out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
-        in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+        rawIn = socket.getInputStream();
 
         System.out.println("Conexión establecida. Enviando CONNECT...");
         sendConnectAction();
@@ -87,8 +87,15 @@ public class TCPClient {
     }
 
     public String receiveMessage() throws IOException {
-        if (in != null) {
-            return in.readLine();
+        if (rawIn != null) {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            int b;
+            while ((b = rawIn.read()) != -1) {
+                if (b == '\n') break;
+                if (b != '\r') baos.write(b);
+            }
+            if (b == -1 && baos.size() == 0) return null;
+            return baos.toString(StandardCharsets.UTF_8.name());
         }
         return null;
     }
@@ -146,18 +153,79 @@ public class TCPClient {
         }).start();
     }
 
+    public Socket getSocket() {
+        return socket;
+    }
+
+    private Queue<DownloadMetadata> pendingDownloadMetadata = new ConcurrentLinkedQueue<>();
+
+    private static class DownloadMetadata {
+        String docId;
+        String filename;
+        String format;
+
+        DownloadMetadata(String docId, String filename, String format) {
+            this.docId = docId;
+            this.filename = filename;
+            this.format = format;
+        }
+    }
+
+    public void requestDownload(String docId, String filename, String format) {
+        pendingDownloadMetadata.add(new DownloadMetadata(docId, filename, format));
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("document_id", Long.parseLong(docId));
+        if (format != null && !format.isEmpty()) {
+            payload.put("format", format);
+        }
+
+        MessageRequest request = new MessageRequest("DOWNLOAD_INIT", payload);
+        sendMessage(JSONSerializer.serialize(request));
+    }
+
+    public void startDownloadTransfer(String token, long size) {
+        DownloadMetadata metadata = pendingDownloadMetadata.poll();
+        if (metadata == null) return;
+
+        new Thread(() -> {
+            try {
+                OutputStream os = socket.getOutputStream();
+                String tokenLine = token + "\n";
+                os.write(tokenLine.getBytes(StandardCharsets.UTF_8));
+                os.flush();
+
+                String subDir = "";
+                String finalFilename = metadata.filename;
+                if ("ORG".equals(metadata.format)) subDir = "original";
+                else if ("ENC".equals(metadata.format)) subDir = "encriptado";
+                else if ("HSH".equals(metadata.format)) {
+                    subDir = "hash";
+                    finalFilename += ".txt";
+                }
+
+                File directory = new File("descargas/" + subDir);
+                if (!directory.exists()) directory.mkdirs();
+
+                File targetFile = new File(directory, finalFilename);
+                System.out.println("Esperando descarga de " + size + " bytes en: " + targetFile.getAbsolutePath());
+
+                // Notificar al ConnectionHandler para que tome el control de la lectura binaria
+                connectionHandler.setDownloading(true, targetFile, size);
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
     public void disconnect() throws IOException {
         if (connectionHandler != null) {
             connectionHandler.stop();
         }
-        if (out != null)
-            out.close();
-        if (in != null)
-            in.close();
-        if (socket != null) {
-            socket.close();
-        }
+        if (out != null) out.close();
+        if (rawIn != null) rawIn.close();
+        if (socket != null) socket.close();
         System.out.println("Desconectado.");
     }
-
 }

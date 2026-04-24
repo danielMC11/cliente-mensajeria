@@ -50,8 +50,11 @@ public class ClientRouter {
                     List<Map<String, Object>> clientes = (List<Map<String, Object>>) payload.get("clientes");
                     if (dashboard != null && clientes != null) {
                         javax.swing.SwingUtilities.invokeLater(() -> {
-                            try { dashboard.getPanelClientes().updateClients(clientes); }
-                            catch (Exception ex) { System.err.println("Error actualizando clientes: " + ex.getMessage()); }
+                            try {
+                                dashboard.getPanelClientes().updateClients(clientes);
+                            } catch (Exception ex) {
+                                System.err.println("Error actualizando clientes: " + ex.getMessage());
+                            }
                         });
                     }
                 }
@@ -61,8 +64,11 @@ public class ClientRouter {
                     List<Map<String, Object>> logs = (List<Map<String, Object>>) payload.get("logs");
                     if (dashboard != null) {
                         javax.swing.SwingUtilities.invokeLater(() -> {
-                            try { dashboard.getPanelLogs().updateLogs(logs); }
-                            catch (Exception ex) { System.err.println("Error actualizando logs: " + ex.getMessage()); }
+                            try {
+                                dashboard.getPanelLogs().updateLogs(logs);
+                            } catch (Exception ex) {
+                                System.err.println("Error actualizando logs: " + ex.getMessage());
+                            }
                         });
                     }
                 }
@@ -72,8 +78,11 @@ public class ClientRouter {
                     List<Map<String, Object>> mensajes = (List<Map<String, Object>>) payload.get("mensajes");
                     if (dashboard != null) {
                         javax.swing.SwingUtilities.invokeLater(() -> {
-                            try { dashboard.getTablaArchivos().updateFiles(mensajes); }
-                            catch (Exception ex) { ex.printStackTrace(); }
+                            try {
+                                dashboard.getTablaArchivos().updateFiles(mensajes);
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                            }
                         });
                     }
                 }
@@ -83,8 +92,11 @@ public class ClientRouter {
                     List<Map<String, Object>> documentos = (List<Map<String, Object>>) payload.get("documentos");
                     if (dashboard != null) {
                         javax.swing.SwingUtilities.invokeLater(() -> {
-                            try { dashboard.getTablaArchivos().updateFiles(documentos); }
-                            catch (Exception ex) { ex.printStackTrace(); }
+                            try {
+                                dashboard.getTablaArchivos().updateFiles(documentos);
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                            }
                         });
                     }
                 }
@@ -96,12 +108,38 @@ public class ClientRouter {
                         dashboard.getTcpClient().startFileTransfer(token);
                     }
                 }
+            } else if (action.equals("DOWNLOAD_INIT_ACK")) {
+                Map payload = (Map) map.get("payload");
+                if (payload != null && "SUCCESS".equals(payload.get("status"))) {
+                    String token = (String) payload.get("message");
+                    long size = 0;
+                    try {
+                        Object sizeObj = payload.get("size_bytes");
+                        if (sizeObj != null)
+                            size = Long.parseLong(sizeObj.toString());
+                    } catch (Exception e) {
+                        System.err.println("Error parsing size_bytes: " + e.getMessage());
+                    }
+
+                    if (dashboard != null) {
+                        dashboard.getTcpClient().startDownloadTransfer(token, size);
+                    }
+                }
             }
-            // Add more actions here later
 
         } catch (Exception e) {
             System.err.println("Error ruteando mensaje: " + json);
             e.printStackTrace();
+        }
+    }
+
+    public void notifyDownloadResult(boolean success, String filename) {
+        if (dashboard != null) {
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                String msg = success ? "Descarga exitosa: " + filename : "Error en la descarga de: " + filename;
+                javax.swing.JOptionPane.showMessageDialog(dashboard, msg, "Estado de Descarga",
+                        success ? javax.swing.JOptionPane.INFORMATION_MESSAGE : javax.swing.JOptionPane.ERROR_MESSAGE);
+            });
         }
     }
 }
