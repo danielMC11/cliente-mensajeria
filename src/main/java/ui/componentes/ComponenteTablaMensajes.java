@@ -11,50 +11,58 @@ public class ComponenteTablaMensajes extends JPanel {
     public ComponenteTablaMensajes() {
         setLayout(new BorderLayout());
 
-        String[] col = { "Emisor", "Contenido", "Descargar" };
+        String[] col = { "ID", "Nombre", "Emisor", "Contenido", "Descargar" };
         modelo = new DefaultTableModel(col, 0) {
             @Override
             public boolean isCellEditable(int r, int c) {
-                return c == 1 || c == 2;
+                return c == 3 || c == 4;
             }
         };
 
         tabla = new JTable(modelo);
-        tabla.setRowHeight(90); // Altura generosa para varias líneas de texto
+        tabla.setRowHeight(90);
         tabla.setRowSelectionAllowed(false);
         tabla.setFillsViewportHeight(true);
 
-        // --- MANEJO DE ANCHOS ---
         TableColumnModel tcm = tabla.getColumnModel();
 
-        // Emisor: Ancho un poco más grande para que quepa la info
-        tcm.getColumn(0).setPreferredWidth(180);
-        tcm.getColumn(0).setMaxWidth(250);
+        // Ocultar ID
+        tcm.getColumn(0).setMinWidth(0);
+        tcm.getColumn(0).setMaxWidth(0);
+        tcm.getColumn(0).setPreferredWidth(0);
 
-        // Contenido: Flexible y amplio
-        tcm.getColumn(1).setPreferredWidth(500);
-        tcm.getColumn(1).setCellRenderer(new MensajeCopiableRenderer());
-        tcm.getColumn(1).setCellEditor(new MensajeCopiableEditor());
+        // Ocultar Nombre (para que EditorGenerico lo encuentre en col 1)
+        tcm.getColumn(1).setMinWidth(0);
+        tcm.getColumn(1).setMaxWidth(0);
+        tcm.getColumn(1).setPreferredWidth(0);
 
-        // Descargar: Ancho fijo para los dos botones
-        tcm.getColumn(2).setPreferredWidth(220);
-        tcm.getColumn(2).setMinWidth(220);
-        tcm.getColumn(2).setCellRenderer(new RendererGenerico(false));
-        tcm.getColumn(2).setCellEditor(new EditorGenerico(tabla, false));
+        // Emisor
+        tcm.getColumn(2).setPreferredWidth(180);
+        tcm.getColumn(2).setMaxWidth(250);
+
+        // Contenido
+        tcm.getColumn(3).setPreferredWidth(500);
+        tcm.getColumn(3).setCellRenderer(new MensajeCopiableRenderer());
+        tcm.getColumn(3).setCellEditor(new MensajeCopiableEditor());
+
+        // Descargar
+        tcm.getColumn(4).setPreferredWidth(220);
+        tcm.getColumn(4).setMinWidth(220);
+        tcm.getColumn(4).setCellRenderer(new RendererGenerico(false));
+        tcm.getColumn(4).setCellEditor(new EditorGenerico(tabla, false));
 
         add(new JScrollPane(tabla), BorderLayout.CENTER);
     }
 
-    public void updateMessages(java.util.List<java.util.Map<String, Object>> mensajes) {
+    public void updateFiles(java.util.List<java.util.Map<String, Object>> mensajes) {
         modelo.setRowCount(0);
+        if (mensajes == null) return;
         for (java.util.Map<String, Object> m : mensajes) {
+            String id = m.get("document_id") != null ? m.get("document_id").toString() : "";
+            String nombre = (String) m.get("nombre");
             String emisor = (String) m.get("emisor");
             String contenido = (String) m.get("contenido");
-            agregarMensaje(emisor, contenido);
+            modelo.addRow(new Object[] { id, nombre, emisor, contenido, "" });
         }
-    }
-
-    public void agregarMensaje(String emisor, String texto) {
-        modelo.addRow(new Object[] { emisor, texto, "" });
     }
 }

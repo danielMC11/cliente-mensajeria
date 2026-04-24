@@ -79,7 +79,7 @@ public class ClientRouter {
                     if (dashboard != null) {
                         javax.swing.SwingUtilities.invokeLater(() -> {
                             try {
-                                dashboard.getTablaArchivos().updateFiles(mensajes);
+                                dashboard.getTablaMensajes().updateFiles(mensajes);
                             } catch (Exception ex) {
                                 ex.printStackTrace();
                             }
@@ -115,8 +115,10 @@ public class ClientRouter {
                     long size = 0;
                     try {
                         Object sizeObj = payload.get("size_bytes");
-                        if (sizeObj != null)
-                            size = Long.parseLong(sizeObj.toString());
+                        if (sizeObj != null) {
+                            // Usar Double para evitar errores si viene como "123.0"
+                            size = Double.valueOf(sizeObj.toString()).longValue();
+                        }
                     } catch (Exception e) {
                         System.err.println("Error parsing size_bytes: " + e.getMessage());
                     }

@@ -110,10 +110,11 @@ public class Dashboard extends JFrame {
 
         // Lógica de intercambio de tablas y filtrado (ahora pide al servidor)
         btnFiltrar.addActionListener(e -> {
-            cardLayout.show(pnlCartas, "TABLA_ARCHIVOS");
             if (rbArchivos.isSelected()) {
+                cardLayout.show(pnlCartas, "TABLA_ARCHIVOS");
                 tcpClient.sendListDocumentsAction();
             } else {
+                cardLayout.show(pnlCartas, "TABLA_MENSAJES");
                 tcpClient.sendListMessagesAction();
             }
         });
