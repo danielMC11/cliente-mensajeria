@@ -183,6 +183,7 @@ public class TCPClient {
         payload.put("document_id", Long.parseLong(docId));
         if (format != null && !format.isEmpty())
             payload.put("format", format);
+        payload.put("username", this.username);
 
         MessageRequest request = new MessageRequest("DOWNLOAD_INIT", payload);
         sendMessage(JSONSerializer.serialize(request));

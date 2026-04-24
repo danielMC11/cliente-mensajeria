@@ -13,7 +13,7 @@ public class ComponenteLogs extends JPanel {
     public ComponenteLogs() {
         setLayout(new BorderLayout());
         setBorder(BorderFactory.createTitledBorder("INFORME LOGS"));
-        setPreferredSize(new Dimension(280, 0));
+        setPreferredSize(new Dimension(320, 0));
 
         btnRefresh = new JButton("Refrescar Logs");
         btnRefresh.setFont(new Font("SansSerif", Font.PLAIN, 10));
