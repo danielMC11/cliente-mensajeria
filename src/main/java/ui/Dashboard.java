@@ -1,5 +1,6 @@
 package ui;
 
+import config.H2Database;
 import config.TCPClient;
 import ui.componentes.ComponenteClientes;
 import ui.componentes.ComponenteLogs;
@@ -40,11 +41,23 @@ public class Dashboard extends JFrame {
 
         JPanel pnlHerramientas = crearPanelHerramientas();
 
-        JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        // Footer con status izquierda y desconectar derecha
+        JPanel pnlFooter = new JPanel(new BorderLayout());
         pnlFooter.setBackground(new Color(230, 230, 230));
+
         lblStatus = new JLabel(" USUARIO: " + username + " | CONECTADO A: " + ip + " | PUERTO: " + puerto);
         lblStatus.setFont(new Font("SansSerif", Font.BOLD, 12));
-        pnlFooter.add(lblStatus);
+
+        JPanel pnlStatusLeft = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        pnlStatusLeft.setBackground(new Color(230, 230, 230));
+        pnlStatusLeft.add(lblStatus);
+
+        JPanel pnlBtnRight = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        pnlBtnRight.setBackground(new Color(230, 230, 230));
+        pnlBtnRight.add(crearBotonDesconectar());
+
+        pnlFooter.add(pnlStatusLeft, BorderLayout.WEST);
+        pnlFooter.add(pnlBtnRight, BorderLayout.EAST);
 
         JPanel pnlCentroContenedor = new JPanel(new BorderLayout());
         pnlCentroContenedor.add(pnlHerramientas, BorderLayout.NORTH);
@@ -56,6 +69,33 @@ public class Dashboard extends JFrame {
         add(pnlFooter, BorderLayout.SOUTH);
 
         setLocationRelativeTo(null);
+    }
+
+    private JButton crearBotonDesconectar() {
+        JButton btnDesconectar = new JButton("Desconectar");
+        btnDesconectar.setForeground(new Color(150, 0, 0));
+        btnDesconectar.setFont(new Font("SansSerif", Font.BOLD, 12));
+
+        btnDesconectar.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "¿Estás seguro de que deseas cerrar la conexión?",
+                    "Confirmar desconexión", JOptionPane.YES_NO_OPTION);
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                try {
+                    if (tcpClient != null) {
+                        tcpClient.disconnect();
+                        H2Database.stopServer();
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+                new VentanaConexion().setVisible(true);
+                this.dispose();
+            }
+        });
+
+        return btnDesconectar;
     }
 
     public ComponenteClientes getPanelClientes() {
@@ -85,11 +125,7 @@ public class Dashboard extends JFrame {
     }
 
     private JPanel crearPanelHerramientas() {
-        // Usamos un BorderLayout interno para poder mandar el botón de desconectar a la
-        // derecha
         JPanel pnlPrincipal = new JPanel(new BorderLayout());
-
-        // Panel izquierdo para las opciones normales
         JPanel pnlIzquierdo = new JPanel(new FlowLayout(FlowLayout.LEFT));
 
         rbArchivos = new JRadioButton("Archivos", true);
@@ -103,12 +139,6 @@ public class Dashboard extends JFrame {
         JButton btnEnviarMsg = new JButton("Enviar Mensaje");
         JButton btnRefresh = new JButton("Refrescar Tablas");
 
-        // --- BOTÓN DESCONECTAR ---
-        JButton btnDesconectar = new JButton("Desconectar");
-        btnDesconectar.setForeground(new Color(150, 0, 0)); // Color rojo oscuro para advertir
-        btnDesconectar.setFont(new Font("SansSerif", Font.BOLD, 12));
-
-        // Lógica de intercambio de tablas y filtrado (ahora pide al servidor)
         btnFiltrar.addActionListener(e -> {
             if (rbArchivos.isSelected()) {
                 cardLayout.show(pnlCartas, "TABLA_ARCHIVOS");
@@ -119,7 +149,6 @@ public class Dashboard extends JFrame {
             }
         });
 
-        // --- LÓGICA DE REFRESCO ---
         btnRefresh.addActionListener(e -> {
             if (rbArchivos.isSelected()) {
                 tcpClient.sendListDocumentsAction();
@@ -131,29 +160,9 @@ public class Dashboard extends JFrame {
         panelClientes.setRefreshAction(e -> tcpClient.sendListClientsAction());
         panelLogs.setRefreshAction(e -> tcpClient.sendListLogsAction());
 
-        // Lógica de desconexión
-        btnDesconectar.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(this,
-                    "¿Estás seguro de que deseas cerrar la conexión?",
-                    "Confirmar desconexión", JOptionPane.YES_NO_OPTION);
-
-            if (confirm == JOptionPane.YES_OPTION) {
-                try {
-                    if (tcpClient != null) {
-                        tcpClient.disconnect();
-                    }
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-                new VentanaConexion().setVisible(true);
-                this.dispose();
-            }
-        });
-
         btnEnviarArch.addActionListener(e -> abrirVentanaEnvioArchivo());
         btnEnviarMsg.addActionListener(e -> abrirVentanaEnvioMensaje());
 
-        // Ensamblar panel izquierdo
         pnlIzquierdo.add(rbArchivos);
         pnlIzquierdo.add(rbMensajes);
         pnlIzquierdo.add(btnFiltrar);
@@ -162,12 +171,7 @@ public class Dashboard extends JFrame {
         pnlIzquierdo.add(btnEnviarMsg);
         pnlIzquierdo.add(btnRefresh);
 
-        // Panel derecho para Desconectar
-        JPanel pnlDerecho = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        pnlDerecho.add(btnDesconectar);
-
         pnlPrincipal.add(pnlIzquierdo, BorderLayout.WEST);
-        pnlPrincipal.add(pnlDerecho, BorderLayout.EAST);
 
         return pnlPrincipal;
     }
@@ -180,10 +184,9 @@ public class Dashboard extends JFrame {
         btnEnviar.setEnabled(false);
         JLabel lblArchivo = new JLabel("Ningún archivo seleccionado");
 
-        final File[][] archivosSeleccionados = { null };
+        final File[][] archivosSeleccionados = {null};
 
         btnSeleccionar.addActionListener(e -> {
-
             try {
                 UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
             } catch (Exception ex) {
@@ -233,6 +236,7 @@ public class Dashboard extends JFrame {
         ventana.setLayout(new BorderLayout());
         JTextArea txtMsg = new JTextArea(5, 30);
         JButton btnEnviar = new JButton("Enviar");
+
         btnEnviar.addActionListener(e -> {
             String content = txtMsg.getText().trim();
             if (!content.isEmpty()) {

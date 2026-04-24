@@ -28,7 +28,7 @@ public class TCPClient {
         this.port = port;
         this.username = username;
         // Se inicializa la base de datos y se crean las tablas si no existen
-        this.h2db = new H2Database();
+        this.h2db =  H2Database.getInstance();
     }
 
     public void connect() throws IOException {
