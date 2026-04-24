@@ -226,10 +226,23 @@ public class Dashboard extends JFrame {
         ventana.setLayout(new BorderLayout());
         JTextArea txtMsg = new JTextArea(5, 30);
         JButton btnEnviar = new JButton("Enviar");
+        btnEnviar.addActionListener(e -> {
+            String content = txtMsg.getText().trim();
+            if (!content.isEmpty()) {
+                if (tcpClient != null) {
+                    tcpClient.sendChatMessage(content);
+                    JOptionPane.showMessageDialog(ventana, "Mensaje enviado con éxito");
+                    txtMsg.setText("");
+                    ventana.dispose();
+                }
+            } else {
+                JOptionPane.showMessageDialog(ventana, "El mensaje no puede estar vacío");
+            }
+        });
 
         ventana.add(new JScrollPane(txtMsg), BorderLayout.CENTER);
         ventana.add(btnEnviar, BorderLayout.SOUTH);
-        ventana.pack();
+        ventana.setSize(400, 250);
         ventana.setLocationRelativeTo(this);
         ventana.setVisible(true);
     }

@@ -102,6 +102,14 @@ public class TCPClient {
         }
         return null;
     }
+    public void sendChatMessage(String content) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("username", this.username);
+        payload.put("message", content);
+
+        MessageRequest request = new MessageRequest("SEND_MESSAGE", payload);
+        sendMessage(JSONSerializer.serialize(request));
+    }
 
     public void sendFile(File file) {
         pendingFiles.add(file);
