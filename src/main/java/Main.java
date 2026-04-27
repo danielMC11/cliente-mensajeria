@@ -1,3 +1,4 @@
+import com.formdev.flatlaf.FlatMacDarkLaf;
 import config.AppConfig;
 import data.H2ChatRepository;
 import data.H2Database;
@@ -9,6 +10,16 @@ import javax.swing.*;
 public class Main {
 
     public static void main(String[] args) {
+        // Establecer Look & Feel FlatLaf (Premium UI)
+        try {
+            UIManager.setLookAndFeel(new FlatMacDarkLaf());
+            // Algunas personalizaciones globales opcionales
+            UIManager.put("Button.arc", 8);
+            UIManager.put("Component.arc", 8);
+            UIManager.put("TextComponent.arc", 8);
+        } catch (Exception ex) {
+            System.err.println("No se pudo inicializar FlatLaf.");
+        }
         // 1. Cargar Configuración
         AppConfig config = new AppConfig();
         

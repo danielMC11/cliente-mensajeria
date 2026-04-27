@@ -25,32 +25,48 @@ public class UDPClient {
     public void sendActionAsync(String action, Map<String, Object> payload) {
         new Thread(() -> {
             try (DatagramSocket socket = new DatagramSocket()) {
-                // 1. Preparar envío
                 MessageRequest request = new MessageRequest(action, payload);
                 String json = JSONSerializer.serialize(request);
                 byte[] sendData = json.getBytes();
                 InetAddress serverAddress = InetAddress.getByName(ip);
-
                 DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, serverAddress, port);
-                socket.send(sendPacket);
-                System.out.println("UDP Enviado: " + json);
-
-                // 2. Esperar respuesta (con timeout de 5 seg para no colgar la app si el paquete se pierde)
-                socket.setSoTimeout(5000);
-                byte[] receiveData = new byte[65507];
-                DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-                socket.receive(receivePacket);
-
-                // 3. Procesar y rutear respuesta
-                String response = new String(receivePacket.getData(), 0, receivePacket.getLength());
-                System.out.println("UDP Recibido: " + response);
-
-                if (router != null) {
-                    router.route(response);
+                
+                int maxRetries = 3;
+                int timeoutMs = 2000;
+                socket.setSoTimeout(timeoutMs);
+                
+                boolean receivedAck = false;
+                int attempts = 0;
+                
+                while (!receivedAck && attempts < maxRetries) {
+                    try {
+                        attempts++;
+                        System.out.println("UDP Enviado (Intento " + attempts + "): " + json);
+                        socket.send(sendPacket);
+                        
+                        byte[] receiveData = new byte[65507];
+                        DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+                        socket.receive(receivePacket); // Espera respuesta o lanza SocketTimeoutException
+                        
+                        String response = new String(receivePacket.getData(), 0, receivePacket.getLength());
+                        System.out.println("UDP Recibido ACK/Respuesta: " + response);
+                        receivedAck = true;
+                        
+                        if (router != null) {
+                            router.route(response);
+                        }
+                    } catch (java.net.SocketTimeoutException e) {
+                        System.err.println("Timeout UDP. No se recibió respuesta. Reintentando...");
+                    }
+                }
+                
+                if (!receivedAck) {
+                    System.err.println("Fallo UDP: No se recibió respuesta después de " + maxRetries + " intentos.");
+                    // Opcional: Notificar a la UI del error de conexión
                 }
 
             } catch (Exception e) {
-                System.err.println("Error en comunicación UDP (Timeout o red): " + e.getMessage());
+                System.err.println("Error en comunicación UDP: " + e.getMessage());
             }
         }).start();
     }
