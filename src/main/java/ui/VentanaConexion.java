@@ -3,8 +3,6 @@ package ui;
 import javax.swing.*;
 import java.awt.*;
 
-import data.H2Database;
-import data.H2ChatRepository;
 import domain.ports.ChatRepository;
 import network.ClientRouter;
 import network.TCPClient;
@@ -12,47 +10,43 @@ import network.UDPClient;
 import network.handlers.*;
 
 public class VentanaConexion extends JFrame {
-    public VentanaConexion() {
+    private final ChatRepository repository;
+    private final Runnable onDisconnect;
+
+    public VentanaConexion(ChatRepository repository, Runnable onDisconnect) {
+        this.repository = repository;
+        this.onDisconnect = onDisconnect;
+        
         setTitle("Conexión al Servidor");
-        setSize(400, 320); // Aumentamos un poco el alto para el nuevo campo
+        setSize(400, 320);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        // Aumentamos a 6 filas para dar espacio al nombre de usuario
         setLayout(new GridLayout(6, 2, 10, 10));
 
         JTextField txtUsername = new JTextField("Usuario1");
         JTextField txtIp = new JTextField("192.168.1.4");
         JTextField txtPort = new JTextField("8080");
 
-        // --- CONFIGURACIÓN DE RADIO BUTTONS ---
-        JRadioButton rbTcp = new JRadioButton("TCP", true); // Seleccionado por defecto
+        JRadioButton rbTcp = new JRadioButton("TCP", true);
         JRadioButton rbUdp = new JRadioButton("UDP");
 
-        // El ButtonGroup hace que la selección sea exclusiva
         ButtonGroup grupoProtocolo = new ButtonGroup();
         grupoProtocolo.add(rbTcp);
         grupoProtocolo.add(rbUdp);
 
-        // Panel para agrupar los radios en una sola celda del GridLayout
         JPanel pnlRadio = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         pnlRadio.add(rbTcp);
         pnlRadio.add(rbUdp);
 
         JButton btnConectar = new JButton("Conectar");
 
-        // --- AGREGAR COMPONENTES ---
         add(new JLabel("  Nombre de Usuario:"));
         add(txtUsername);
-
         add(new JLabel("  Dirección IP:"));
         add(txtIp);
-
         add(new JLabel("  Puerto:"));
         add(txtPort);
-
         add(new JLabel("  Protocolo:"));
         add(pnlRadio);
-
-        // Espacio vacío para alinear el botón a la derecha
         add(new JLabel(""));
         add(btnConectar);
 
@@ -65,11 +59,6 @@ public class VentanaConexion extends JFrame {
             if (protocolo.equals("TCP")) {
                 new Thread(() -> {
                     try {
-                        // 1. Setup DB y Repositorio
-                        H2Database h2db = H2Database.getInstance();
-                        ChatRepository repository = new H2ChatRepository(h2db);
-                        
-                        // 2. Setup Publisher y Router
                         SwingEventPublisher uiPublisher = new SwingEventPublisher();
                         ClientRouter router = new ClientRouter();
                         
@@ -83,14 +72,12 @@ public class VentanaConexion extends JFrame {
                         router.registerHandler(new UploadStatusHandler(uiPublisher, "UPLOAD_SUCCESS"));
                         router.registerHandler(new UploadStatusHandler(uiPublisher, "UPLOAD_FAILED"));
 
-                        // 3. Setup Red
                         TCPClient client = new TCPClient(ip, puerto, username, repository, uiPublisher);
                         client.connect();
                         client.startListening(router);
                         
-                        // 4. Setup UI
                         SwingUtilities.invokeLater(() -> {
-                            Dashboard dashboard = new Dashboard(username, ip, String.valueOf(puerto), client, null);
+                            Dashboard dashboard = new Dashboard(username, ip, String.valueOf(puerto), client, null, onDisconnect, repository);
                             uiPublisher.setDashboard(dashboard);
                             dashboard.setVisible(true);
                             this.dispose();
@@ -103,7 +90,6 @@ public class VentanaConexion extends JFrame {
                     }
                 }).start();
             } else {
-                // --- LÓGICA UDP ---
                 new Thread(() -> {
                     try {
                         SwingEventPublisher uiPublisher = new SwingEventPublisher();
@@ -119,7 +105,7 @@ public class VentanaConexion extends JFrame {
                         udpClient.connect();
 
                         SwingUtilities.invokeLater(() -> {
-                            Dashboard dashboard = new Dashboard(username, ip, String.valueOf(puerto), null, udpClient);
+                            Dashboard dashboard = new Dashboard(username, ip, String.valueOf(puerto), null, udpClient, onDisconnect, repository);
                             uiPublisher.setDashboard(dashboard);
                             dashboard.setVisible(true);
                             this.dispose();
@@ -134,9 +120,7 @@ public class VentanaConexion extends JFrame {
             }
         });
 
-        // Margen interno para que no pegue a los bordes de la ventana
         ((JPanel)getContentPane()).setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
         setLocationRelativeTo(null);
     }
 }

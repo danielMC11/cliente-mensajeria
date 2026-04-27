@@ -1,6 +1,5 @@
 package ui;
 
-import data.H2Database;
 import network.TCPClient;
 import network.UDPClient;
 import ui.componentes.ComponenteClientes;
@@ -11,6 +10,8 @@ import ui.componentes.ComponenteTablaMensajes;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
+
+import domain.ports.ChatRepository;
 
 public class Dashboard extends JFrame {
     private CardLayout cardLayout = new CardLayout();
@@ -23,10 +24,14 @@ public class Dashboard extends JFrame {
     private TCPClient tcpClient;
     private JLabel lblStatus;
     private UDPClient udpClient;
+    private final Runnable onDisconnect;
+    private final ChatRepository repository;
 
-    public Dashboard(String username, String ip, String puerto, TCPClient tcpClient, UDPClient udpClient) {
+    public Dashboard(String username, String ip, String puerto, TCPClient tcpClient, UDPClient udpClient, Runnable onDisconnect, ChatRepository repository) {
         this.tcpClient = tcpClient;
         this.udpClient = udpClient;
+        this.onDisconnect = onDisconnect;
+        this.repository = repository;
         setTitle("Dashboard - " + username + " conectado a " + ip);
         setSize(1250, 700);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -101,12 +106,14 @@ public class Dashboard extends JFrame {
                 try {
                     if (tcpClient != null) {
                         tcpClient.disconnect();
-                        H2Database.stopServer();
+                    }
+                    if (onDisconnect != null) {
+                        onDisconnect.run();
                     }
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
-                new VentanaConexion().setVisible(true);
+                new VentanaConexion(repository, onDisconnect).setVisible(true);
                 this.dispose();
             }
         });
