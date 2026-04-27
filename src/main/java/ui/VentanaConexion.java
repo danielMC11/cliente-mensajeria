@@ -3,6 +3,14 @@ package ui;
 import javax.swing.*;
 import java.awt.*;
 
+import data.H2Database;
+import data.H2ChatRepository;
+import domain.ports.ChatRepository;
+import network.ClientRouter;
+import network.TCPClient;
+import network.UDPClient;
+import network.handlers.*;
+
 public class VentanaConexion extends JFrame {
     public VentanaConexion() {
         setTitle("Conexión al Servidor");
@@ -57,16 +65,33 @@ public class VentanaConexion extends JFrame {
             if (protocolo.equals("TCP")) {
                 new Thread(() -> {
                     try {
-                        config.TCPClient client = new config.TCPClient(ip, puerto, username);
-                        client.connect();
+                        // 1. Setup DB y Repositorio
+                        H2Database h2db = H2Database.getInstance();
+                        ChatRepository repository = new H2ChatRepository(h2db);
                         
-                        config.ClientRouter router = new config.ClientRouter();
+                        // 2. Setup Publisher y Router
+                        SwingEventPublisher uiPublisher = new SwingEventPublisher();
+                        ClientRouter router = new ClientRouter();
+                        
+                        router.registerHandler(new ConnectAckHandler(uiPublisher));
+                        router.registerHandler(new ListClientsHandler(uiPublisher));
+                        router.registerHandler(new ListLogsHandler(uiPublisher));
+                        router.registerHandler(new ListMessagesHandler(uiPublisher));
+                        router.registerHandler(new ListDocumentsHandler(uiPublisher));
+                        router.registerHandler(new UploadInitAckHandler(uiPublisher));
+                        router.registerHandler(new DownloadInitAckHandler(uiPublisher));
+                        router.registerHandler(new UploadStatusHandler(uiPublisher, "UPLOAD_SUCCESS"));
+                        router.registerHandler(new UploadStatusHandler(uiPublisher, "UPLOAD_FAILED"));
+
+                        // 3. Setup Red
+                        TCPClient client = new TCPClient(ip, puerto, username, repository, uiPublisher);
+                        client.connect();
                         client.startListening(router);
                         
-                        // Si la conexión es exitosa, abrir el dashboard en el hilo de UI
+                        // 4. Setup UI
                         SwingUtilities.invokeLater(() -> {
                             Dashboard dashboard = new Dashboard(username, ip, String.valueOf(puerto), client, null);
-                            router.setDashboard(dashboard);
+                            uiPublisher.setDashboard(dashboard);
                             dashboard.setVisible(true);
                             this.dispose();
                         });
@@ -81,17 +106,21 @@ public class VentanaConexion extends JFrame {
                 // --- LÓGICA UDP ---
                 new Thread(() -> {
                     try {
-                        config.ClientRouter router = new config.ClientRouter();
-                        config.UDPClient udpClient = new config.UDPClient(ip, puerto, username, router);
+                        SwingEventPublisher uiPublisher = new SwingEventPublisher();
+                        ClientRouter router = new ClientRouter();
+                        
+                        router.registerHandler(new ConnectAckHandler(uiPublisher));
+                        router.registerHandler(new ListClientsHandler(uiPublisher));
+                        router.registerHandler(new ListLogsHandler(uiPublisher));
+                        router.registerHandler(new ListMessagesHandler(uiPublisher));
+                        router.registerHandler(new ListDocumentsHandler(uiPublisher));
 
-                        // Enviar el ping de "conexión"
+                        UDPClient udpClient = new UDPClient(ip, puerto, username, router);
                         udpClient.connect();
 
-                        // Abrir el dashboard pasándole el cliente UDP (y null al TCP)
                         SwingUtilities.invokeLater(() -> {
-                            // Nota: Actualizaremos el constructor del Dashboard en el paso 3
                             Dashboard dashboard = new Dashboard(username, ip, String.valueOf(puerto), null, udpClient);
-                            router.setDashboard(dashboard);
+                            uiPublisher.setDashboard(dashboard);
                             dashboard.setVisible(true);
                             this.dispose();
                         });

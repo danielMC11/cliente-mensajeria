@@ -1,6 +1,6 @@
-package config;
+package network;
 
-import config.models.MessageRequest;
+import models.MessageRequest;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;

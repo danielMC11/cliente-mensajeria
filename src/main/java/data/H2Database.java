@@ -1,4 +1,4 @@
-package config;
+package data;
 
 import org.h2.tools.Server;
 

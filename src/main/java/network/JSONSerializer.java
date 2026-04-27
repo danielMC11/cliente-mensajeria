@@ -1,4 +1,4 @@
-package config;
+package network;
 
 import com.google.gson.Gson;
 

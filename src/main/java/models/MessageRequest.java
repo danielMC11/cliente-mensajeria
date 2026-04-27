@@ -1,4 +1,4 @@
-package config.models;
+package models;
 
 import java.util.Map;
 

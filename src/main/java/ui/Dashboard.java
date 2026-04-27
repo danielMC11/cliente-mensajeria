@@ -1,7 +1,8 @@
 package ui;
 
-import config.H2Database;
-import config.TCPClient;
+import data.H2Database;
+import network.TCPClient;
+import network.UDPClient;
 import ui.componentes.ComponenteClientes;
 import ui.componentes.ComponenteLogs;
 import ui.componentes.ComponenteTablaArchivos;
@@ -21,9 +22,9 @@ public class Dashboard extends JFrame {
     private JRadioButton rbArchivos, rbMensajes;
     private TCPClient tcpClient;
     private JLabel lblStatus;
-    private config.UDPClient udpClient;
+    private UDPClient udpClient;
 
-    public Dashboard(String username, String ip, String puerto, TCPClient tcpClient, config.UDPClient udpClient) {
+    public Dashboard(String username, String ip, String puerto, TCPClient tcpClient, UDPClient udpClient) {
         this.tcpClient = tcpClient;
         this.udpClient = udpClient;
         setTitle("Dashboard - " + username + " conectado a " + ip);

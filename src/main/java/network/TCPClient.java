@@ -1,6 +1,9 @@
-package config;
+package network;
 
-import config.models.MessageRequest;
+import models.MessageRequest;
+import domain.ports.ChatRepository;
+import domain.ports.UIEventPublisher;
+
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -21,14 +24,15 @@ public class TCPClient {
 
     private ConnectionHandler connectionHandler;
     private ClientRouter router;
-    private H2Database h2db; // Instancia de la base de datos local
+    private ChatRepository repository;
+    private UIEventPublisher uiPublisher;
 
-    public TCPClient(String ip, int port, String username) {
+    public TCPClient(String ip, int port, String username, ChatRepository repository, UIEventPublisher uiPublisher) {
         this.ip = ip;
         this.port = port;
         this.username = username;
-        // Se inicializa la base de datos y se crean las tablas si no existen
-        this.h2db =  H2Database.getInstance();
+        this.repository = repository;
+        this.uiPublisher = uiPublisher;
     }
 
     public void connect() throws IOException {
@@ -114,7 +118,9 @@ public class TCPClient {
      */
     public void sendChatMessage(String content) {
         // --- GUARDADO LOCAL ---
-        h2db.saveChatMessage(this.username, content);
+        if (repository != null) {
+            repository.saveMessage(this.username, content);
+        }
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("username", this.username);
@@ -137,13 +143,15 @@ public class TCPClient {
         }
 
         // --- GUARDADO LOCAL ---
-        h2db.saveDocument(
-                file.getName(),
-                file.length(),
-                extension,
-                "application/octet-stream",
-                this.username
-        );
+        if (repository != null) {
+            repository.saveDocumentMetadata(
+                    file.getName(),
+                    file.length(),
+                    extension,
+                    "application/octet-stream",
+                    this.username
+            );
+        }
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("filename", file.getName());
@@ -274,8 +282,8 @@ public class TCPClient {
                 success = false;
             }
 
-            if (router != null) {
-                router.notifyDownloadResult(success, targetFile.getName());
+            if (uiPublisher != null) {
+                uiPublisher.onDownloadFinished(success, targetFile.getName());
             }
         }).start();
     }
