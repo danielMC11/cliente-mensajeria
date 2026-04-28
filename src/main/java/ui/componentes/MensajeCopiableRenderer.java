@@ -9,13 +9,13 @@ public class MensajeCopiableRenderer extends JPanel implements TableCellRenderer
 
     public MensajeCopiableRenderer() {
         setLayout(new BorderLayout(5, 5));
-        setBackground(Color.WHITE);
 
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
         textArea.setOpaque(false);
         textArea.setEditable(false);
         textArea.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        textArea.setBackground(UIManager.getColor("TextArea.background"));
 
         btnCopiar.setPreferredSize(new Dimension(30, 30));
 
@@ -33,6 +33,15 @@ public class MensajeCopiableRenderer extends JPanel implements TableCellRenderer
     @Override
     public Component getTableCellRendererComponent(JTable t, Object v, boolean s, boolean f, int r, int c) {
         textArea.setText(v != null ? v.toString() : "");
+
+        // Aplicar colores del tema FlatLaf cuando está seleccionada
+        if (s) {
+            setBackground(t.getSelectionBackground());
+            textArea.setForeground(t.getSelectionForeground());
+        } else {
+            setBackground(t.getBackground());
+            textArea.setForeground(t.getForeground());
+        }
 
         // Ajuste dinámico: obligamos al JTextArea a saber cuánto ancho tiene la columna
         textArea.setSize(t.getColumnModel().getColumn(c).getWidth() - 40, 1);

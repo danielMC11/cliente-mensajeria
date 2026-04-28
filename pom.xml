@@ -27,7 +27,6 @@
             <version>2.2.224</version>
         </dependency>
 
-        <!-- UI Premium -->
         <dependency>
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf</artifactId>

@@ -21,7 +21,6 @@ public class ComponenteLogs extends JPanel {
         areaTexto = new JTextArea();
         areaTexto.setEditable(false);
         areaTexto.setFont(new Font("Monospaced", Font.PLAIN, 11)); // Fuente tipo consola
-        areaTexto.setBackground(Color.WHITE);
 
         JScrollPane scroll = new JScrollPane(areaTexto);
         scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);

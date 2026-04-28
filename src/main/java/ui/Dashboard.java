@@ -51,17 +51,14 @@ public class Dashboard extends JFrame {
 
         // Footer con status izquierda y desconectar derecha
         JPanel pnlFooter = new JPanel(new BorderLayout());
-        pnlFooter.setBackground(new Color(230, 230, 230));
 
         lblStatus = new JLabel(" USUARIO: " + username + " | CONECTADO A: " + ip + " | PUERTO: " + puerto);
         lblStatus.setFont(new Font("SansSerif", Font.BOLD, 12));
 
         JPanel pnlStatusLeft = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        pnlStatusLeft.setBackground(new Color(230, 230, 230));
         pnlStatusLeft.add(lblStatus);
 
         JPanel pnlBtnRight = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        pnlBtnRight.setBackground(new Color(230, 230, 230));
         pnlBtnRight.add(crearBotonDesconectar());
 
         pnlFooter.add(pnlStatusLeft, BorderLayout.WEST);
@@ -94,7 +91,6 @@ public class Dashboard extends JFrame {
     }
     private JButton crearBotonDesconectar() {
         JButton btnDesconectar = new JButton("Desconectar");
-        btnDesconectar.setForeground(new Color(150, 0, 0));
         btnDesconectar.setFont(new Font("SansSerif", Font.BOLD, 12));
 
         btnDesconectar.addActionListener(e -> {
@@ -210,12 +206,6 @@ public class Dashboard extends JFrame {
         final File[][] archivosSeleccionados = {null};
 
         btnSeleccionar.addActionListener(e -> {
-            try {
-                UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setMultiSelectionEnabled(true);
             int option = fileChooser.showOpenDialog(ventana);

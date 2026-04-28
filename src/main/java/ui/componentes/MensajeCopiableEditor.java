@@ -12,7 +12,6 @@ public class MensajeCopiableEditor extends AbstractCellEditor implements TableCe
     private JButton btnCopiar = new JButton("📋");
 
     public MensajeCopiableEditor() {
-        panel.setBackground(Color.WHITE);
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
         textArea.setEditable(false);

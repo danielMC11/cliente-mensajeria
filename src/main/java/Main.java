@@ -1,4 +1,4 @@
-import com.formdev.flatlaf.FlatMacDarkLaf;
+import com.formdev.flatlaf.FlatLightLaf;
 import config.AppConfig;
 import data.H2ChatRepository;
 import data.H2Database;
@@ -10,9 +10,9 @@ import javax.swing.*;
 public class Main {
 
     public static void main(String[] args) {
-        // Establecer Look & Feel FlatLaf (Premium UI)
+        // Establecer Look & Feel FlatLaf (Premium UI - Modo Día)
         try {
-            UIManager.setLookAndFeel(new FlatMacDarkLaf());
+            UIManager.setLookAndFeel(new FlatLightLaf());
             // Algunas personalizaciones globales opcionales
             UIManager.put("Button.arc", 8);
             UIManager.put("Component.arc", 8);
