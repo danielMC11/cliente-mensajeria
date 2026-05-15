@@ -23,6 +23,9 @@ public interface UIEventPublisher {
     /** Mensaje de texto recibido en tiempo real (privado o broadcast federado). */
     void onNewMessage(String message);
 
+    /** El servidor cerró la conexión TCP (apagado, caída de red, etc.). */
+    void onServerDisconnected();
+
     // --- Eventos P2P distribuidos ---
 
     /** Un servidor se unió a la red. Recibe nodeId, host, clusterPort, message. */

@@ -47,7 +47,7 @@ public class TCPClient {
 
     public void startListening(ClientRouter router) {
         this.router = router;
-        this.connectionHandler = new ConnectionHandler(this, router);
+        this.connectionHandler = new ConnectionHandler(this, router, uiPublisher);
         new Thread(this.connectionHandler).start();
     }
 

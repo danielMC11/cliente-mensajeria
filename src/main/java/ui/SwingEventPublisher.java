@@ -134,6 +134,24 @@ public class SwingEventPublisher implements UIEventPublisher {
         });
     }
 
+    @Override
+    public void onServerDisconnected() {
+        SwingUtilities.invokeLater(() -> {
+            JOptionPane.showMessageDialog(
+                    dashboard,
+                    "<html><b>⚠ Conexión perdida</b><br><br>"
+                    + "El servidor ha cerrado la conexión.<br>"
+                    + "Por favor, verifica que el servidor esté activo<br>"
+                    + "y vuelve a iniciar el cliente.</html>",
+                    "Servidor desconectado",
+                    JOptionPane.ERROR_MESSAGE
+            );
+            if (dashboard != null) {
+                dashboard.dispose();
+            }
+        });
+    }
+
     // ── Eventos P2P distribuidos ──────────────────────────────────────────────
 
     /**
