@@ -2,150 +2,91 @@ package ui;
 
 import network.TCPClient;
 import network.UDPClient;
-import ui.componentes.ComponenteClientes;
-import ui.componentes.ComponenteLogs;
-import ui.componentes.ComponenteTablaArchivos;
-import ui.componentes.ComponenteTablaMensajes;
+import ui.componentes.*;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 import domain.ports.ChatRepository;
 
+/**
+ * Ventana principal del cliente de mensajería P2P.
+ *
+ * Layout:
+ *   WEST  → ComponenteClientes (lista federada LOCAL/REMOTO)
+ *   CENTER → toolbar + JPanel con CardLayout (archivos / mensajes)
+ *   EAST  → JTabbedPane con 3 tabs:
+ *              - Logs (local)
+ *              - Servidores (peers)
+ *              - Logs Remotos
+ *   SOUTH → barra de estado con notificaciones de cluster + botón desconectar
+ *
+ * Requerimientos cubiertos:
+ *   ✓ Detección de servidores amigos (tab Servidores)
+ *   ✓ Notificación push join/leave de servidores (barra de estado)
+ *   ✓ Lista federada de clientes (ComponenteClientes con tipo LOCAL/REMOTO)
+ *   ✓ Envío dirigido o broadcast (diálogo con selector de destinatario)
+ *   ✓ Info y logs de otros servidores (tabs Servidores + Logs Remotos)
+ */
 public class Dashboard extends JFrame {
-    private CardLayout cardLayout = new CardLayout();
-    private JPanel pnlCartas;
-    private ComponenteClientes panelClientes;
-    private ComponenteLogs panelLogs;
-    private ComponenteTablaArchivos tablaArchivos;
-    private ComponenteTablaMensajes tablaMensajes;
-    private JRadioButton rbArchivos, rbMensajes;
-    private TCPClient tcpClient;
-    private JLabel lblStatus;
-    private UDPClient udpClient;
-    private final Runnable onDisconnect;
+
+    // Layout
+    private final CardLayout cardLayout = new CardLayout();
+    private final JPanel pnlCartas;
+    private final JRadioButton rbArchivos;
+    private final JRadioButton rbMensajes;
+    private JTabbedPane tabsPane;  // Campo para que los listeners de toolbar lo referencien
+
+    // Componentes de datos
+    private final ComponenteClientes    panelClientes;
+    private final ComponenteLogs        panelLogs;
+    private final ComponenteServidores  panelServidores;
+    private final ComponentePeerLogs    panelPeerLogs;
+    private final ComponenteTablaArchivos tablaArchivos;
+    private final ComponenteTablaMensajes tablaMensajes;
+
+    // Red
+    private final TCPClient  tcpClient;
+    private final UDPClient  udpClient;
+
+    // Estado
+    private final Runnable     onDisconnect;
     private final ChatRepository repository;
+    private final String       username;
 
-    public Dashboard(String username, String ip, String puerto, TCPClient tcpClient, UDPClient udpClient, Runnable onDisconnect, ChatRepository repository) {
-        this.tcpClient = tcpClient;
-        this.udpClient = udpClient;
+    // Barra de estado + notificaciones de cluster
+    private final JLabel lblStatus;
+    private final JLabel lblClusterEvent;  // muestra join/leave temporalmente
+
+    public Dashboard(String username, String ip, String puerto,
+                     TCPClient tcpClient, UDPClient udpClient,
+                     Runnable onDisconnect, ChatRepository repository) {
+        this.tcpClient   = tcpClient;
+        this.udpClient   = udpClient;
         this.onDisconnect = onDisconnect;
-        this.repository = repository;
-        setTitle("Dashboard - " + username + " conectado a " + ip);
-        setSize(1250, 700);
+        this.repository  = repository;
+        this.username    = username;
+
+        setTitle("Dashboard P2P — " + username + " | " + ip + ":" + puerto);
+        setSize(1400, 750);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setLayout(new BorderLayout(5, 5));
+        setLayout(new BorderLayout(4, 4));
 
-        panelClientes = new ComponenteClientes();
-        panelLogs = new ComponenteLogs();
+        // ── Componentes ────────────────────────────────────────────────────
+        panelClientes   = new ComponenteClientes();
+        panelLogs       = new ComponenteLogs();
+        panelServidores = new ComponenteServidores();
+        panelPeerLogs   = new ComponentePeerLogs();
+        tablaArchivos   = new ComponenteTablaArchivos();
+        tablaMensajes   = new ComponenteTablaMensajes();
 
+        // ── Centro: CardLayout ──────────────────────────────────────────────
         pnlCartas = new JPanel(cardLayout);
-        tablaArchivos = new ComponenteTablaArchivos();
-        tablaMensajes = new ComponenteTablaMensajes();
-
         pnlCartas.add(tablaArchivos, "TABLA_ARCHIVOS");
         pnlCartas.add(tablaMensajes, "TABLA_MENSAJES");
-
-        JPanel pnlHerramientas = crearPanelHerramientas();
-
-        // Footer con status izquierda y desconectar derecha
-        JPanel pnlFooter = new JPanel(new BorderLayout());
-
-        lblStatus = new JLabel(" USUARIO: " + username + " | CONECTADO A: " + ip + " | PUERTO: " + puerto);
-        lblStatus.setFont(new Font("SansSerif", Font.BOLD, 12));
-
-        JPanel pnlStatusLeft = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        pnlStatusLeft.add(lblStatus);
-
-        JPanel pnlBtnRight = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        pnlBtnRight.add(crearBotonDesconectar());
-
-        pnlFooter.add(pnlStatusLeft, BorderLayout.WEST);
-        pnlFooter.add(pnlBtnRight, BorderLayout.EAST);
-
-        JPanel pnlCentroContenedor = new JPanel(new BorderLayout());
-        pnlCentroContenedor.add(pnlHerramientas, BorderLayout.NORTH);
-        pnlCentroContenedor.add(pnlCartas, BorderLayout.CENTER);
-
-        add(panelClientes, BorderLayout.WEST);
-        add(pnlCentroContenedor, BorderLayout.CENTER);
-        add(panelLogs, BorderLayout.EAST);
-        add(pnlFooter, BorderLayout.SOUTH);
-
-        setLocationRelativeTo(null);
-    }
-    public void enviarPeticion(String accion) {
-        if (tcpClient != null) {
-            // Si es TCP, usamos los métodos que ya tienes
-            switch(accion) {
-                case "LIST_CLIENTS": tcpClient.sendListClientsAction(); break;
-                case "LIST_LOGS": tcpClient.sendListLogsAction(); break;
-                case "LIST_DOCUMENTS": tcpClient.sendListDocumentsAction(); break;
-                case "LIST_MESSAGES": tcpClient.sendListMessagesAction(); break;
-            }
-        } else if (udpClient != null) {
-            // Si es UDP, usamos el nuevo método genérico
-            udpClient.sendActionAsync(accion, new java.util.HashMap<>());
-        }
-    }
-    private JButton crearBotonDesconectar() {
-        JButton btnDesconectar = new JButton("Desconectar");
-        btnDesconectar.setFont(new Font("SansSerif", Font.BOLD, 12));
-
-        btnDesconectar.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(this,
-                    "¿Estás seguro de que deseas cerrar la conexión?",
-                    "Confirmar desconexión", JOptionPane.YES_NO_OPTION);
-
-            if (confirm == JOptionPane.YES_OPTION) {
-                try {
-                    if (tcpClient != null) {
-                        tcpClient.disconnect();
-                    }
-                    if (onDisconnect != null) {
-                        onDisconnect.run();
-                    }
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-                new VentanaConexion(repository, onDisconnect).setVisible(true);
-                this.dispose();
-            }
-        });
-
-        return btnDesconectar;
-    }
-
-    public ComponenteClientes getPanelClientes() {
-        return panelClientes;
-    }
-
-    public ComponenteLogs getPanelLogs() {
-        return panelLogs;
-    }
-
-    public TCPClient getTcpClient() {
-        return tcpClient;
-    }
-
-    public ComponenteTablaArchivos getTablaArchivos() {
-        return tablaArchivos;
-    }
-
-    public ComponenteTablaMensajes getTablaMensajes() {
-        return tablaMensajes;
-    }
-
-    public void iniciarDescarga(String docId, String filename, String format) {
-        if (tcpClient != null) {
-            tcpClient.requestDownload(docId, filename, format);
-        }
-    }
-
-    private JPanel crearPanelHerramientas() {
-        JPanel pnlPrincipal = new JPanel(new BorderLayout());
-        JPanel pnlIzquierdo = new JPanel(new FlowLayout(FlowLayout.LEFT));
 
         rbArchivos = new JRadioButton("Archivos", true);
         rbMensajes = new JRadioButton("Mensajes");
@@ -153,15 +94,69 @@ public class Dashboard extends JFrame {
         grupo.add(rbArchivos);
         grupo.add(rbMensajes);
 
-        JButton btnFiltrar = new JButton("Filtrar");
-        JButton btnEnviarArch = new JButton("Enviar Archivo");
-        JButton btnEnviarMsg = new JButton("Enviar Mensaje");
-        JButton btnRefresh = new JButton("Refrescar Tablas");
+        // ── Este: JTabbedPane con 3 tabs ───────────────────────────────────
+        tabsPane = new JTabbedPane();   // Asignamos al campo de instancia
+        tabsPane.setPreferredSize(new Dimension(320, 0));
+        tabsPane.addTab("📋 Logs", panelLogs);
+        tabsPane.addTab("🌐 Servidores", panelServidores);
+        tabsPane.addTab("📡 Logs Remotos", panelPeerLogs);
+
+        // Acciones de los botones de refresh de cada tab
+        panelLogs.setRefreshAction(e -> enviarPeticion("LIST_LOGS"));
+        panelServidores.setRefreshAction(e -> enviarPeticion("LIST_PEER_INFO"));
+        panelPeerLogs.setRefreshAction(e -> enviarPeticion("LIST_PEER_LOGS"));
+
+        // ── Centro: toolbar + cartas (después de tabsPane para que los listeners funcionen)
+        JPanel pnlCentro = new JPanel(new BorderLayout());
+        pnlCentro.add(crearToolbar(), BorderLayout.NORTH);
+        pnlCentro.add(pnlCartas, BorderLayout.CENTER);
+
+        // ── Sur: barra de estado ────────────────────────────────────────────
+        lblStatus = new JLabel("  👤 " + username + "  |  🔗 " + ip + ":" + puerto);
+        lblStatus.setFont(new Font("SansSerif", Font.BOLD, 12));
+
+        lblClusterEvent = new JLabel("  🔵 Cluster activo");
+        lblClusterEvent.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        lblClusterEvent.setForeground(new Color(0, 80, 160));
+
+        JPanel pnlLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        pnlLeft.add(lblStatus);
+        pnlLeft.add(new JSeparator(SwingConstants.VERTICAL));
+        pnlLeft.add(lblClusterEvent);
+
+        JPanel pnlFooter = new JPanel(new BorderLayout());
+        pnlFooter.setBorder(new EmptyBorder(2, 4, 2, 4));
+        pnlFooter.add(pnlLeft, BorderLayout.WEST);
+        pnlFooter.add(crearBotonDesconectar(), BorderLayout.EAST);
+
+        // ── Ensamblado ──────────────────────────────────────────────────────
+        add(panelClientes,  BorderLayout.WEST);
+        add(pnlCentro,      BorderLayout.CENTER);
+        add(tabsPane,       BorderLayout.EAST);
+        add(pnlFooter,      BorderLayout.SOUTH);
+
+        // Refresh inicial de clientes
+        panelClientes.setRefreshAction(e -> enviarPeticion("LIST_CLIENTS"));
+
+        setLocationRelativeTo(null);
+    }
+
+    // ── Toolbar ─────────────────────────────────────────────────────────────
+
+    private JPanel crearToolbar() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+
+        JButton btnFiltrar     = new JButton("Filtrar");
+        JButton btnEnviarArch  = new JButton("📁 Enviar Archivo");
+        JButton btnEnviarMsg   = new JButton("✉ Enviar Mensaje");
+        JButton btnRefresh     = new JButton("⟳ Refrescar");
+        JButton btnServidores  = new JButton("🌐 Info Servidores");
+        JButton btnLogsRemotos = new JButton("📡 Logs Remotos");
 
         btnFiltrar.addActionListener(e -> {
             if (rbArchivos.isSelected()) {
                 cardLayout.show(pnlCartas, "TABLA_ARCHIVOS");
-                enviarPeticion("LIST_DOCUMENTS"); // <-- CAMBIADO
+                enviarPeticion("LIST_DOCUMENTS");
             } else {
                 cardLayout.show(pnlCartas, "TABLA_MENSAJES");
                 enviarPeticion("LIST_MESSAGES");
@@ -169,31 +164,73 @@ public class Dashboard extends JFrame {
         });
 
         btnRefresh.addActionListener(e -> {
-            if (rbArchivos.isSelected()) {
-                enviarPeticion("LIST_DOCUMENTS");
-            } else {
-                enviarPeticion("LIST_MESSAGES");
-            }
+            enviarPeticion(rbArchivos.isSelected() ? "LIST_DOCUMENTS" : "LIST_MESSAGES");
         });
-
-        panelClientes.setRefreshAction(e -> enviarPeticion("LIST_CLIENTS")); // <-- CAMBIADO
-        panelLogs.setRefreshAction(e -> enviarPeticion("LIST_LOGS")); // <-- CAMBIADO
 
         btnEnviarArch.addActionListener(e -> abrirVentanaEnvioArchivo());
         btnEnviarMsg.addActionListener(e -> abrirVentanaEnvioMensaje());
 
-        pnlIzquierdo.add(rbArchivos);
-        pnlIzquierdo.add(rbMensajes);
-        pnlIzquierdo.add(btnFiltrar);
-        pnlIzquierdo.add(new JSeparator(SwingConstants.VERTICAL));
-        pnlIzquierdo.add(btnEnviarArch);
-        pnlIzquierdo.add(btnEnviarMsg);
-        pnlIzquierdo.add(btnRefresh);
+        btnServidores.addActionListener(e -> {
+            enviarPeticion("LIST_PEER_INFO");
+            if (tabsPane != null) tabsPane.setSelectedIndex(1);
+        });
 
-        pnlPrincipal.add(pnlIzquierdo, BorderLayout.WEST);
+        btnLogsRemotos.addActionListener(e -> {
+            enviarPeticion("LIST_PEER_LOGS");
+            if (tabsPane != null) tabsPane.setSelectedIndex(2);
+        });
 
-        return pnlPrincipal;
+        panel.add(rbArchivos);
+        panel.add(rbMensajes);
+        panel.add(btnFiltrar);
+        panel.add(new JSeparator(SwingConstants.VERTICAL));
+        panel.add(btnEnviarArch);
+        panel.add(btnEnviarMsg);
+        panel.add(btnRefresh);
+        panel.add(new JSeparator(SwingConstants.VERTICAL));
+        panel.add(btnServidores);
+        panel.add(btnLogsRemotos);
+
+        return panel;
     }
+
+    // ── Envío de peticiones ─────────────────────────────────────────────────
+
+    public void enviarPeticion(String accion) {
+        if (tcpClient != null) {
+            switch (accion) {
+                case "LIST_CLIENTS":    tcpClient.sendListClientsAction();    break;
+                case "LIST_LOGS":       tcpClient.sendListLogsAction();       break;
+                case "LIST_DOCUMENTS":  tcpClient.sendListDocumentsAction();  break;
+                case "LIST_MESSAGES":   tcpClient.sendListMessagesAction();   break;
+                case "LIST_PEER_INFO":  tcpClient.sendListPeerInfoAction();   break;
+                case "LIST_PEER_LOGS":  tcpClient.sendListPeerLogsAction();   break;
+            }
+        } else if (udpClient != null) {
+            udpClient.sendActionAsync(accion, new java.util.HashMap<>());
+        }
+    }
+
+    // ── Notificación de cluster ─────────────────────────────────────────────
+
+    /**
+     * Muestra un mensaje de evento de cluster en la barra de estado con color.
+     * El mensaje se borra automáticamente después de 5 segundos.
+     */
+    public void showClusterNotification(String message, Color color) {
+        lblClusterEvent.setText("  " + message);
+        lblClusterEvent.setForeground(color);
+
+        // Restaurar después de 5 segundos
+        Timer timer = new Timer(5000, e -> {
+            lblClusterEvent.setText("  🔵 Cluster activo");
+            lblClusterEvent.setForeground(new Color(0, 80, 160));
+        });
+        timer.setRepeats(false);
+        timer.start();
+    }
+
+    // ── Diálogos ────────────────────────────────────────────────────────────
 
     private void abrirVentanaEnvioArchivo() {
         JDialog ventana = new JDialog(this, "Seleccionar archivo(s)", true);
@@ -202,35 +239,31 @@ public class Dashboard extends JFrame {
         JButton btnEnviar = new JButton("Enviar");
         btnEnviar.setEnabled(false);
         JLabel lblArchivo = new JLabel("Ningún archivo seleccionado");
-
-        final File[][] archivosSeleccionados = {null};
+        final java.io.File[][] archivosSeleccionados = {null};
 
         btnSeleccionar.addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setMultiSelectionEnabled(true);
-            int option = fileChooser.showOpenDialog(ventana);
-            if (option == JFileChooser.APPROVE_OPTION) {
-                File[] seleccionados = fileChooser.getSelectedFiles();
-                if (seleccionados == null || seleccionados.length == 0) {
-                    File single = fileChooser.getSelectedFile();
-                    if (single != null) seleccionados = new File[]{single};
+            JFileChooser fc = new JFileChooser();
+            fc.setMultiSelectionEnabled(true);
+            if (fc.showOpenDialog(ventana) == JFileChooser.APPROVE_OPTION) {
+                java.io.File[] sel = fc.getSelectedFiles();
+                if (sel == null || sel.length == 0) {
+                    java.io.File s = fc.getSelectedFile();
+                    if (s != null) sel = new java.io.File[]{s};
                 }
-                if (seleccionados != null && seleccionados.length > 0) {
-                    archivosSeleccionados[0] = seleccionados;
-                    lblArchivo.setText(seleccionados.length + " archivo(s) seleccionado(s)");
+                if (sel != null && sel.length > 0) {
+                    archivosSeleccionados[0] = sel;
+                    lblArchivo.setText(sel.length + " archivo(s) seleccionado(s)");
                     btnEnviar.setEnabled(true);
                 }
             }
         });
 
         btnEnviar.addActionListener(e -> {
-            if (archivosSeleccionados[0] != null) {
+            if (archivosSeleccionados[0] != null && tcpClient != null) {
                 btnEnviar.setEnabled(false);
                 btnEnviar.setText("Enviando...");
-                for (File f : archivosSeleccionados[0]) {
-                    if (tcpClient != null) {
-                        tcpClient.sendFile(f);
-                    }
+                for (java.io.File f : archivosSeleccionados[0]) {
+                    tcpClient.sendFile(f);
                 }
                 ventana.dispose();
             }
@@ -244,30 +277,107 @@ public class Dashboard extends JFrame {
         ventana.setVisible(true);
     }
 
+    /**
+     * Diálogo de envío de mensaje con selector de destinatario.
+     *
+     * Permite elegir entre:
+     *   - "— Todos —"  → broadcast a todos los clientes de la red
+     *   - Un cliente específico → entrega dirigida (SEND_MESSAGE con targetUsername)
+     *
+     * Requerimiento: "Los documentos/mensajes se podrán enviar a un cliente en especial o a todos."
+     */
     private void abrirVentanaEnvioMensaje() {
-        JDialog ventana = new JDialog(this, "Enviar Mensaje", true);
-        ventana.setLayout(new BorderLayout());
-        JTextArea txtMsg = new JTextArea(5, 30);
-        JButton btnEnviar = new JButton("Enviar");
+        if (tcpClient == null) return;
 
+        JDialog ventana = new JDialog(this, "Enviar Mensaje", true);
+        ventana.setLayout(new BorderLayout(8, 8));
+        ventana.getRootPane().setBorder(new EmptyBorder(10, 10, 10, 10));
+
+        // Selector de destinatario
+        List<String> opciones = new ArrayList<>();
+        opciones.add("— Todos —");
+        opciones.addAll(panelClientes.getCurrentUsernames());
+
+        JComboBox<String> cmbDestinatario = new JComboBox<>(opciones.toArray(new String[0]));
+        cmbDestinatario.setFont(new Font("SansSerif", Font.PLAIN, 13));
+
+        JPanel pnlDest = new JPanel(new BorderLayout(4, 0));
+        pnlDest.add(new JLabel("Destinatario: "), BorderLayout.WEST);
+        pnlDest.add(cmbDestinatario, BorderLayout.CENTER);
+
+        // Área de texto
+        JTextArea txtMsg = new JTextArea(5, 30);
+        txtMsg.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        txtMsg.setLineWrap(true);
+        txtMsg.setWrapStyleWord(true);
+
+        // Botón enviar
+        JButton btnEnviar = new JButton("Enviar");
+        btnEnviar.setFont(new Font("SansSerif", Font.BOLD, 13));
         btnEnviar.addActionListener(e -> {
             String content = txtMsg.getText().trim();
-            if (!content.isEmpty()) {
-                if (tcpClient != null) {
-                    tcpClient.sendChatMessage(content);
-                    JOptionPane.showMessageDialog(ventana, "Mensaje enviado con éxito");
-                    txtMsg.setText("");
-                    ventana.dispose();
-                }
-            } else {
-                JOptionPane.showMessageDialog(ventana, "El mensaje no puede estar vacío");
+            if (content.isEmpty()) {
+                JOptionPane.showMessageDialog(ventana, "El mensaje no puede estar vacío.");
+                return;
             }
+            String target = (String) cmbDestinatario.getSelectedItem();
+            if ("— Todos —".equals(target)) {
+                tcpClient.sendDirectMessage(null, content);
+                JOptionPane.showMessageDialog(ventana, "Mensaje enviado a todos.");
+            } else {
+                tcpClient.sendDirectMessage(target, content);
+                JOptionPane.showMessageDialog(ventana, "Mensaje enviado a " + target + ".");
+            }
+            txtMsg.setText("");
+            ventana.dispose();
         });
 
+        JPanel pnlTop = new JPanel(new BorderLayout(4, 4));
+        pnlTop.add(pnlDest, BorderLayout.NORTH);
+
+        ventana.add(pnlTop, BorderLayout.NORTH);
         ventana.add(new JScrollPane(txtMsg), BorderLayout.CENTER);
         ventana.add(btnEnviar, BorderLayout.SOUTH);
-        ventana.setSize(400, 250);
+        ventana.setSize(450, 280);
         ventana.setLocationRelativeTo(this);
         ventana.setVisible(true);
     }
+
+    // ── Botón desconectar ────────────────────────────────────────────────────
+
+    private JButton crearBotonDesconectar() {
+        JButton btn = new JButton("Desconectar");
+        btn.setFont(new Font("SansSerif", Font.BOLD, 12));
+        btn.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "¿Estás seguro de que deseas cerrar la conexión?",
+                    "Confirmar desconexión", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                try {
+                    if (tcpClient != null) tcpClient.disconnect();
+                    if (onDisconnect != null) onDisconnect.run();
+                } catch (Exception ex) { ex.printStackTrace(); }
+                new VentanaConexion(repository, onDisconnect).setVisible(true);
+                this.dispose();
+            }
+        });
+        return btn;
+    }
+
+    // ── Getters para SwingEventPublisher ─────────────────────────────────────
+
+    /** Inicia la descarga de un documento (llamado desde EditorGenerico). */
+    public void iniciarDescarga(String docId, String filename, String format) {
+        if (tcpClient != null) {
+            tcpClient.requestDownload(docId, filename, format);
+        }
+    }
+
+    public ComponenteClientes   getPanelClientes()   { return panelClientes; }
+    public ComponenteLogs       getPanelLogs()       { return panelLogs; }
+    public ComponenteServidores getPanelServidores() { return panelServidores; }
+    public ComponentePeerLogs   getPanelPeerLogs()   { return panelPeerLogs; }
+    public ComponenteTablaArchivos getTablaArchivos()  { return tablaArchivos; }
+    public ComponenteTablaMensajes getTablaMensajes()  { return tablaMensajes; }
+    public TCPClient getTcpClient() { return tcpClient; }
 }

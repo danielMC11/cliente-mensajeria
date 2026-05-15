@@ -3,15 +3,25 @@ package ui;
 import domain.ports.UIEventPublisher;
 
 import javax.swing.*;
+import java.awt.*;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Implementación Swing de UIEventPublisher.
+ * Despacha todos los eventos al Event Dispatch Thread (EDT) de Swing.
+ *
+ * Extensión P2P: implementa los eventos de cluster (join/leave de servidores,
+ * lista de peers, logs remotos).
+ */
 public class SwingEventPublisher implements UIEventPublisher {
     private Dashboard dashboard;
 
     public void setDashboard(Dashboard dashboard) {
         this.dashboard = dashboard;
     }
+
+    // ── Eventos existentes ────────────────────────────────────────────────────
 
     @Override
     public void onClientsUpdated(List<Map<String, Object>> clients) {
@@ -68,10 +78,10 @@ public class SwingEventPublisher implements UIEventPublisher {
     @Override
     public void onUploadStatus(boolean success, String message) {
         if (dashboard != null) {
-            SwingUtilities.invokeLater(() -> {
+            SwingUtilities.invokeLater(() ->
                 JOptionPane.showMessageDialog(dashboard, message, "Estado de Subida",
-                        success ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
-            });
+                        success ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE)
+            );
         }
     }
 
@@ -103,5 +113,82 @@ public class SwingEventPublisher implements UIEventPublisher {
         if (dashboard != null && dashboard.getTcpClient() != null) {
             dashboard.getTcpClient().startDownloadTransfer(token, size);
         }
+    }
+
+    // ── Eventos P2P distribuidos ──────────────────────────────────────────────
+
+    /**
+     * Un servidor se unió a la red. Muestra una notificación discreta en la barra de estado
+     * y actualiza el panel de servidores si está visible.
+     */
+    @Override
+    public void onServerJoined(Map<String, Object> serverInfo) {
+        if (dashboard == null) return;
+        String nodeId = str(serverInfo, "nodeId");
+        String host   = str(serverInfo, "host");
+        SwingUtilities.invokeLater(() -> {
+            dashboard.showClusterNotification(
+                    "🟢 Servidor unido: " + nodeId + " (" + host + ")",
+                    new Color(0, 120, 0));
+            // Solicitar lista actualizada de servidores
+            dashboard.enviarPeticion("LIST_PEER_INFO");
+        });
+    }
+
+    /**
+     * Un servidor se desconectó o es sospechoso. Notificación en rojo/amarillo.
+     */
+    @Override
+    public void onServerLeft(Map<String, Object> serverInfo) {
+        if (dashboard == null) return;
+        String nodeId    = str(serverInfo, "nodeId");
+        String eventType = str(serverInfo, "eventType");
+        boolean isSuspected = "SERVER_SUSPECTED".equals(eventType);
+        SwingUtilities.invokeLater(() -> {
+            String msg   = isSuspected
+                    ? "🟡 Servidor sospechoso: " + nodeId
+                    : "🔴 Servidor desconectado: " + nodeId;
+            Color color  = isSuspected ? new Color(160, 100, 0) : new Color(160, 0, 0);
+            dashboard.showClusterNotification(msg, color);
+            // Solicitar lista actualizada de servidores
+            dashboard.enviarPeticion("LIST_PEER_INFO");
+        });
+    }
+
+    /**
+     * Lista actualizada de todos los servidores conocidos → actualiza ComponenteServidores.
+     */
+    @Override
+    public void onPeerInfoUpdated(List<Map<String, Object>> servers) {
+        if (dashboard != null && servers != null) {
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    dashboard.getPanelServidores().updateServers(servers);
+                } catch (Exception ex) {
+                    System.err.println("Error actualizando servidores: " + ex.getMessage());
+                }
+            });
+        }
+    }
+
+    /**
+     * Logs consolidados de todos los servidores → actualiza ComponentePeerLogs.
+     */
+    @Override
+    public void onPeerLogsReceived(List<Map<String, Object>> peerLogs) {
+        if (dashboard != null && peerLogs != null) {
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    dashboard.getPanelPeerLogs().updatePeerLogs(peerLogs);
+                } catch (Exception ex) {
+                    System.err.println("Error actualizando logs remotos: " + ex.getMessage());
+                }
+            });
+        }
+    }
+
+    private String str(Map<String, Object> map, String key) {
+        Object v = map.get(key);
+        return v != null ? v.toString() : "N/A";
     }
 }

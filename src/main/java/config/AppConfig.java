@@ -9,19 +9,27 @@ public class AppConfig {
 
     public AppConfig() {
         properties = new Properties();
-        // Load default config or from file if needed.
-        // For simplicity, we define defaults here.
-        properties.setProperty("db.url", "jdbc:h2:tcp://localhost:9090/chat_db");
-        properties.setProperty("db.user", "sa");
-        properties.setProperty("db.password", "");
-        properties.setProperty("db.port", "9090");
-        properties.setProperty("db.dir", "./data");
+
+        // Intentar cargar desde archivo en el classpath
+        try (InputStream in = getClass().getClassLoader()
+                .getResourceAsStream("app.properties")) {
+            if (in != null) {
+                properties.load(in);
+            }
+        } catch (IOException ignored) {}
+
+        // Valores por defecto para H2 EMBEDDED (sin puerto TCP)
+        // db.url NO se usa más directamente — H2Database construye la URL
+        // a partir de db.dir, eliminando cualquier riesgo de conflicto de puertos.
+        properties.putIfAbsent("db.user",     "sa");
+        properties.putIfAbsent("db.password", "");
+        properties.putIfAbsent("db.dir",      "./data");
     }
 
     public String getProperty(String key) {
         return properties.getProperty(key);
     }
-    
+
     public String getProperty(String key, String defaultValue) {
         return properties.getProperty(key, defaultValue);
     }

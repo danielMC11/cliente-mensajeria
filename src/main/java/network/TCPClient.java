@@ -89,6 +89,46 @@ public class TCPClient {
         sendMessage(JSONSerializer.serialize(request));
     }
 
+    /**
+     * Solicita la lista de todos los servidores conocidos en el cluster (ALIVE/SUSPECTED/DOWN).
+     * Requerimiento: "Detección de servidores amigos: listar servidores conectados y desconectados."
+     */
+    public void sendListPeerInfoAction() {
+        MessageRequest request = new MessageRequest("LIST_PEER_INFO", new HashMap<>());
+        sendMessage(JSONSerializer.serialize(request));
+    }
+
+    /**
+     * Solicita los logs consolidados de todos los servidores de la red.
+     * Requerimiento: "Adicionar servicios para mostrar los logs de otros servidores."
+     */
+    public void sendListPeerLogsAction() {
+        MessageRequest request = new MessageRequest("LIST_PEER_LOGS", new HashMap<>());
+        sendMessage(JSONSerializer.serialize(request));
+    }
+
+    /**
+     * Envía un mensaje dirigido a un cliente específico.
+     * Si targetUsername es null o "Todos", se comporta como broadcast.
+     * Requerimiento: "Los documentos/mensajes se podrán enviar a un cliente en especial o a todos."
+     */
+    public void sendDirectMessage(String targetUsername, String content) {
+        if (repository != null) {
+            repository.saveMessage(this.username, content);
+        }
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("username", this.username);
+        payload.put("message", content);
+
+        if (targetUsername != null && !targetUsername.equals("Todos")) {
+            payload.put("targetUsername", targetUsername);
+        }
+
+        MessageRequest request = new MessageRequest("SEND_MESSAGE", payload);
+        sendMessage(JSONSerializer.serialize(request));
+    }
+
     public void sendMessage(String message) {
         if (out != null) {
             out.println(message);

@@ -72,6 +72,13 @@ public class VentanaConexion extends JFrame {
                         router.registerHandler(new UploadStatusHandler(uiPublisher, "UPLOAD_SUCCESS"));
                         router.registerHandler(new UploadStatusHandler(uiPublisher, "UPLOAD_FAILED"));
 
+                        // --- Handlers P2P distribuidos ---
+                        router.registerHandler(new ServerJoinedHandler(uiPublisher));
+                        router.registerHandler(new ServerLeftHandler(uiPublisher, "SERVER_LEFT"));
+                        router.registerHandler(new ServerLeftHandler(uiPublisher, "SERVER_SUSPECTED"));
+                        router.registerHandler(new ListPeerInfoHandler(uiPublisher));
+                        router.registerHandler(new ListPeerLogsHandler(uiPublisher));
+
                         TCPClient client = new TCPClient(ip, puerto, username, repository, uiPublisher);
                         client.connect();
                         client.startListening(router);
