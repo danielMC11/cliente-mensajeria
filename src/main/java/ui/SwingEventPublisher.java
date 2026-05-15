@@ -115,6 +115,25 @@ public class SwingEventPublisher implements UIEventPublisher {
         }
     }
 
+    // ── Mensaje entrante en tiempo real ───────────────────────────────────────
+
+    /**
+     * Muestra un mensaje recibido (privado o broadcast federado) en un diálogo
+     * emergente para que el destinatario lo vea inmediatamente.
+     * También refresca la pestaña de mensajes históricos.
+     */
+    @Override
+    public void onNewMessage(String message) {
+        if (dashboard == null) return;
+        // Refrescar la tabla de mensajes silenciosamente (sin popup)
+        // El mensaje aparecerá en la tabla gracias al filtro por usuario en LIST_MESSAGES
+        SwingUtilities.invokeLater(() -> {
+            if (dashboard.getTcpClient() != null) {
+                dashboard.enviarPeticion("LIST_MESSAGES");
+            }
+        });
+    }
+
     // ── Eventos P2P distribuidos ──────────────────────────────────────────────
 
     /**

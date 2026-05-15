@@ -79,6 +79,11 @@ public class VentanaConexion extends JFrame {
                         router.registerHandler(new ListPeerInfoHandler(uiPublisher));
                         router.registerHandler(new ListPeerLogsHandler(uiPublisher));
 
+                        // --- Mensajes en tiempo real ---
+                        router.registerHandler(new NewMessageHandler(uiPublisher, "NEW_MESSAGE_ACK"));
+                        router.registerHandler(new NewMessageHandler(uiPublisher, "NEW_MESSAGE"));
+                        router.registerHandler(new SendMessageAckHandler(uiPublisher));
+
                         TCPClient client = new TCPClient(ip, puerto, username, repository, uiPublisher);
                         client.connect();
                         client.startListening(router);
@@ -107,6 +112,11 @@ public class VentanaConexion extends JFrame {
                         router.registerHandler(new ListLogsHandler(uiPublisher));
                         router.registerHandler(new ListMessagesHandler(uiPublisher));
                         router.registerHandler(new ListDocumentsHandler(uiPublisher));
+
+                        // --- Mensajes en tiempo real (UDP) ---
+                        router.registerHandler(new NewMessageHandler(uiPublisher, "NEW_MESSAGE_ACK"));
+                        router.registerHandler(new NewMessageHandler(uiPublisher, "NEW_MESSAGE"));
+                        router.registerHandler(new SendMessageAckHandler(uiPublisher));
 
                         UDPClient udpClient = new UDPClient(ip, puerto, username, router);
                         udpClient.connect();

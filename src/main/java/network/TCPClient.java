@@ -80,7 +80,11 @@ public class TCPClient {
     }
 
     public void sendListMessagesAction() {
-        MessageRequest request = new MessageRequest("LIST_MESSAGES", new HashMap<>());
+        Map<String, Object> payload = new HashMap<>();
+        if (this.username != null) {
+            payload.put("username", this.username);
+        }
+        MessageRequest request = new MessageRequest("LIST_MESSAGES", payload);
         sendMessage(JSONSerializer.serialize(request));
     }
 

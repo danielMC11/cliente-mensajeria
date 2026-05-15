@@ -20,6 +20,9 @@ public interface UIEventPublisher {
     void onUploadInitAck(String token);
     void onDownloadInitAck(String token, long size);
 
+    /** Mensaje de texto recibido en tiempo real (privado o broadcast federado). */
+    void onNewMessage(String message);
+
     // --- Eventos P2P distribuidos ---
 
     /** Un servidor se unió a la red. Recibe nodeId, host, clusterPort, message. */
