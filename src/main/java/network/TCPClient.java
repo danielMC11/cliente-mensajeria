@@ -89,7 +89,11 @@ public class TCPClient {
     }
 
     public void sendListDocumentsAction() {
-        MessageRequest request = new MessageRequest("LIST_DOCUMENTS", new HashMap<>());
+        Map<String, Object> payload = new HashMap<>();
+        if (this.username != null) {
+            payload.put("username", this.username);
+        }
+        MessageRequest request = new MessageRequest("LIST_DOCUMENTS", payload);
         sendMessage(JSONSerializer.serialize(request));
     }
 
@@ -176,8 +180,9 @@ public class TCPClient {
 
     /**
      * Prepara el envío de un archivo y guarda sus metadatos en la DB local H2.
+     * @param targetUsername Destinatario del archivo (o null para broadcast).
      */
-    public void sendFile(File file) {
+    public void sendFile(File file, String targetUsername) {
         pendingFiles.add(file);
 
         String extension = "";
@@ -203,6 +208,10 @@ public class TCPClient {
         payload.put("extension", extension);
         payload.put("mimeType", "application/octet-stream");
         payload.put("username", this.username);
+        
+        if (targetUsername != null && !targetUsername.trim().isEmpty()) {
+            payload.put("targetUsername", targetUsername);
+        }
 
         MessageRequest request = new MessageRequest("UPLOAD_INIT", payload);
         String json = JSONSerializer.serialize(request);

@@ -233,12 +233,27 @@ public class Dashboard extends JFrame {
     // ── Diálogos ────────────────────────────────────────────────────────────
 
     private void abrirVentanaEnvioArchivo() {
-        JDialog ventana = new JDialog(this, "Seleccionar archivo(s)", true);
-        ventana.setLayout(new FlowLayout());
+        JDialog ventana = new JDialog(this, "Enviar Archivo(s)", true);
+        ventana.setLayout(new BorderLayout(8, 8));
+        ventana.getRootPane().setBorder(new EmptyBorder(10, 10, 10, 10));
+
+        // Selector de destinatario
+        List<String> opciones = new ArrayList<>();
+        opciones.add("— Todos —");
+        opciones.addAll(panelClientes.getCurrentUsernames());
+
+        JComboBox<String> cmbDestinatario = new JComboBox<>(opciones.toArray(new String[0]));
+        cmbDestinatario.setFont(new Font("SansSerif", Font.PLAIN, 13));
+
+        JPanel pnlDest = new JPanel(new BorderLayout(4, 0));
+        pnlDest.add(new JLabel("Destinatario: "), BorderLayout.WEST);
+        pnlDest.add(cmbDestinatario, BorderLayout.CENTER);
+
         JButton btnSeleccionar = new JButton("Seleccionar archivo(s)");
         JButton btnEnviar = new JButton("Enviar");
         btnEnviar.setEnabled(false);
         JLabel lblArchivo = new JLabel("Ningún archivo seleccionado");
+        lblArchivo.setHorizontalAlignment(SwingConstants.CENTER);
         final java.io.File[][] archivosSeleccionados = {null};
 
         btnSeleccionar.addActionListener(e -> {
@@ -262,17 +277,30 @@ public class Dashboard extends JFrame {
             if (archivosSeleccionados[0] != null && tcpClient != null) {
                 btnEnviar.setEnabled(false);
                 btnEnviar.setText("Enviando...");
+                String target = (String) cmbDestinatario.getSelectedItem();
+                String finalTarget = "— Todos —".equals(target) ? null : target;
+                
                 for (java.io.File f : archivosSeleccionados[0]) {
-                    tcpClient.sendFile(f);
+                    tcpClient.sendFile(f, finalTarget);
+                }
+                
+                if (finalTarget == null) {
+                    JOptionPane.showMessageDialog(ventana, "Archivo(s) enviado(s) a todos.");
+                } else {
+                    JOptionPane.showMessageDialog(ventana, "Archivo(s) enviado(s) a " + finalTarget + ".");
                 }
                 ventana.dispose();
             }
         });
 
-        ventana.add(btnSeleccionar);
-        ventana.add(lblArchivo);
-        ventana.add(btnEnviar);
-        ventana.setSize(400, 150);
+        JPanel pnlCenter = new JPanel(new GridLayout(2, 1, 0, 10));
+        pnlCenter.add(btnSeleccionar);
+        pnlCenter.add(lblArchivo);
+
+        ventana.add(pnlDest, BorderLayout.NORTH);
+        ventana.add(pnlCenter, BorderLayout.CENTER);
+        ventana.add(btnEnviar, BorderLayout.SOUTH);
+        ventana.setSize(400, 200);
         ventana.setLocationRelativeTo(this);
         ventana.setVisible(true);
     }
