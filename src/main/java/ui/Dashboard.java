@@ -274,14 +274,18 @@ public class Dashboard extends JFrame {
         });
 
         btnEnviar.addActionListener(e -> {
-            if (archivosSeleccionados[0] != null && tcpClient != null) {
+            if (archivosSeleccionados[0] != null && (tcpClient != null || udpClient != null)) {
                 btnEnviar.setEnabled(false);
                 btnEnviar.setText("Enviando...");
                 String target = (String) cmbDestinatario.getSelectedItem();
                 String finalTarget = "— Todos —".equals(target) ? null : target;
                 
                 for (java.io.File f : archivosSeleccionados[0]) {
-                    tcpClient.sendFile(f, finalTarget);
+                    if (tcpClient != null) {
+                        tcpClient.sendFile(f, finalTarget);
+                    } else if (udpClient != null) {
+                        udpClient.sendFile(f, finalTarget);
+                    }
                 }
                 
                 if (finalTarget == null) {
@@ -315,7 +319,7 @@ public class Dashboard extends JFrame {
      * Requerimiento: "Los documentos/mensajes se podrán enviar a un cliente en especial o a todos."
      */
     private void abrirVentanaEnvioMensaje() {
-        if (tcpClient == null) return;
+        if (tcpClient == null && udpClient == null) return;
 
         JDialog ventana = new JDialog(this, "Enviar Mensaje", true);
         ventana.setLayout(new BorderLayout(8, 8));
@@ -350,10 +354,12 @@ public class Dashboard extends JFrame {
             }
             String target = (String) cmbDestinatario.getSelectedItem();
             if ("— Todos —".equals(target)) {
-                tcpClient.sendDirectMessage(null, content);
+                if (tcpClient != null) tcpClient.sendDirectMessage(null, content);
+                else if (udpClient != null) udpClient.sendDirectMessage(null, content);
                 JOptionPane.showMessageDialog(ventana, "Mensaje enviado a todos.");
             } else {
-                tcpClient.sendDirectMessage(target, content);
+                if (tcpClient != null) tcpClient.sendDirectMessage(target, content);
+                else if (udpClient != null) udpClient.sendDirectMessage(target, content);
                 JOptionPane.showMessageDialog(ventana, "Mensaje enviado a " + target + ".");
             }
             txtMsg.setText("");
@@ -398,6 +404,8 @@ public class Dashboard extends JFrame {
     public void iniciarDescarga(String docId, String filename, String format) {
         if (tcpClient != null) {
             tcpClient.requestDownload(docId, filename, format);
+        } else if (udpClient != null) {
+            udpClient.requestDownload(docId, filename, format);
         }
     }
 

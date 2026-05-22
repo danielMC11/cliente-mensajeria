@@ -19,6 +19,7 @@ public interface UIEventPublisher {
     void onConnectAck(String status, String message);
     void onUploadInitAck(String token);
     void onDownloadInitAck(String token, long size);
+    void onDownloadProgress(String filename, long currentBytes, long totalBytes);
 
     /** Mensaje de texto recibido en tiempo real (privado o broadcast federado). */
     void onNewMessage(String message);

@@ -115,6 +115,11 @@ public class SwingEventPublisher implements UIEventPublisher {
         }
     }
 
+    @Override
+    public void onDownloadProgress(String filename, long currentBytes, long totalBytes) {
+
+    }
+
     // ── Mensaje entrante en tiempo real ───────────────────────────────────────
 
     /**

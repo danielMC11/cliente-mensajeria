@@ -112,13 +112,24 @@ public class VentanaConexion extends JFrame {
                         router.registerHandler(new ListLogsHandler(uiPublisher));
                         router.registerHandler(new ListMessagesHandler(uiPublisher));
                         router.registerHandler(new ListDocumentsHandler(uiPublisher));
+                        router.registerHandler(new UploadInitAckHandler(uiPublisher));
+                        router.registerHandler(new DownloadInitAckHandler(uiPublisher));
+                        router.registerHandler(new UploadStatusHandler(uiPublisher, "UPLOAD_SUCCESS"));
+                        router.registerHandler(new UploadStatusHandler(uiPublisher, "UPLOAD_FAILED"));
+
+                        // --- Handlers P2P distribuidos ---
+                        router.registerHandler(new ServerJoinedHandler(uiPublisher));
+                        router.registerHandler(new ServerLeftHandler(uiPublisher, "SERVER_LEFT"));
+                        router.registerHandler(new ServerLeftHandler(uiPublisher, "SERVER_SUSPECTED"));
+                        router.registerHandler(new ListPeerInfoHandler(uiPublisher));
+                        router.registerHandler(new ListPeerLogsHandler(uiPublisher));
 
                         // --- Mensajes en tiempo real (UDP) ---
                         router.registerHandler(new NewMessageHandler(uiPublisher, "NEW_MESSAGE_ACK"));
                         router.registerHandler(new NewMessageHandler(uiPublisher, "NEW_MESSAGE"));
                         router.registerHandler(new SendMessageAckHandler(uiPublisher));
 
-                        UDPClient udpClient = new UDPClient(ip, puerto, username, router);
+                        UDPClient udpClient = new UDPClient(ip, puerto, username, repository, uiPublisher, router);
                         udpClient.connect();
 
                         SwingUtilities.invokeLater(() -> {
