@@ -16,6 +16,7 @@ import java.util.Map;
  */
 public class SwingEventPublisher implements UIEventPublisher {
     private Dashboard dashboard;
+    private final java.util.Map<String, ProgressMonitor> progressMonitors = new java.util.concurrent.ConcurrentHashMap<>();
 
     public void setDashboard(Dashboard dashboard) {
         this.dashboard = dashboard;
@@ -125,7 +126,24 @@ public class SwingEventPublisher implements UIEventPublisher {
 
     @Override
     public void onDownloadProgress(String filename, long currentBytes, long totalBytes) {
-
+        SwingUtilities.invokeLater(() -> {
+            ProgressMonitor pm = progressMonitors.get(filename);
+            if (pm == null) {
+                pm = new ProgressMonitor(dashboard, "Descargando " + filename, "Iniciando...", 0, 100);
+                pm.setMillisToDecideToPopup(100);
+                pm.setMillisToPopup(100);
+                progressMonitors.put(filename, pm);
+            }
+            
+            int percent = (int) ((currentBytes * 100) / totalBytes);
+            pm.setProgress(percent);
+            pm.setNote("Completado: " + percent + "% (" + (currentBytes / 1024) + " KB / " + (totalBytes / 1024) + " KB)");
+            
+            if (currentBytes >= totalBytes || pm.isCanceled()) {
+                pm.close();
+                progressMonitors.remove(filename);
+            }
+        });
     }
 
     // ── Mensaje entrante en tiempo real ───────────────────────────────────────

@@ -248,10 +248,16 @@ public class UDPClient {
                 byte[] buffer = new byte[8192];
                 int bytesRead;
                 long totalRead = 0;
+                long lastUpdate = 0;
                 while (totalRead < size
                         && (bytesRead = is.read(buffer, 0, (int) Math.min(buffer.length, size - totalRead))) != -1) {
                     fos.write(buffer, 0, bytesRead);
                     totalRead += bytesRead;
+
+                    if (uiPublisher != null && (totalRead - lastUpdate > 1024 * 50 || totalRead == size)) {
+                        uiPublisher.onDownloadProgress(targetFile.getName(), totalRead, size);
+                        lastUpdate = totalRead;
+                    }
                 }
                 fos.flush();
                 success = (totalRead == size);
