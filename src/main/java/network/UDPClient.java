@@ -1,5 +1,7 @@
 package network;
 
+import domain.ports.ChatRepository;
+import domain.ports.UIEventPublisher;
 import models.MessageRequest;
 
 import java.net.DatagramPacket;

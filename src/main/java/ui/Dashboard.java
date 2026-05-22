@@ -416,4 +416,5 @@ public class Dashboard extends JFrame {
     public ComponenteTablaArchivos getTablaArchivos()  { return tablaArchivos; }
     public ComponenteTablaMensajes getTablaMensajes()  { return tablaMensajes; }
     public TCPClient getTcpClient() { return tcpClient; }
+    public UDPClient getUdpClient() { return udpClient; }
 }

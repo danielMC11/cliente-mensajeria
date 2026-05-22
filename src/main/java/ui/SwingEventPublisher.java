@@ -103,15 +103,23 @@ public class SwingEventPublisher implements UIEventPublisher {
 
     @Override
     public void onUploadInitAck(String token) {
-        if (dashboard != null && dashboard.getTcpClient() != null) {
-            dashboard.getTcpClient().startFileTransfer(token);
+        if (dashboard != null) {
+            if (dashboard.getTcpClient() != null) {
+                dashboard.getTcpClient().startFileTransfer(token);
+            } else if (dashboard.getUdpClient() != null) {
+                dashboard.getUdpClient().startFileTransfer(token);
+            }
         }
     }
 
     @Override
     public void onDownloadInitAck(String token, long size) {
-        if (dashboard != null && dashboard.getTcpClient() != null) {
-            dashboard.getTcpClient().startDownloadTransfer(token, size);
+        if (dashboard != null) {
+            if (dashboard.getTcpClient() != null) {
+                dashboard.getTcpClient().startDownloadTransfer(token, size);
+            } else if (dashboard.getUdpClient() != null) {
+                dashboard.getUdpClient().startDownloadTransfer(token, size);
+            }
         }
     }
 
@@ -133,7 +141,7 @@ public class SwingEventPublisher implements UIEventPublisher {
         // Refrescar la tabla de mensajes silenciosamente (sin popup)
         // El mensaje aparecerá en la tabla gracias al filtro por usuario en LIST_MESSAGES
         SwingUtilities.invokeLater(() -> {
-            if (dashboard.getTcpClient() != null) {
+            if (dashboard.getTcpClient() != null || dashboard.getUdpClient() != null) {
                 dashboard.enviarPeticion("LIST_MESSAGES");
             }
         });
