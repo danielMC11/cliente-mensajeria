@@ -112,6 +112,12 @@ public class UDPClient {
         sendActionAsync("SEND_MESSAGE", payload);
     }
 
+    public void sendAnalyzeMessage(String content) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("mensaje", content);
+        sendActionAsync("ANALYZE_MESSAGE", payload);
+    }
+
     public void sendFile(java.io.File file, String targetUsername) {
         pendingFiles.add(file);
 

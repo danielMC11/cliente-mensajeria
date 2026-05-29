@@ -409,6 +409,19 @@ public class Dashboard extends JFrame {
         }
     }
 
+    private String pendingAnalyzeId;
+    public void setPendingAnalyzeId(String id) { this.pendingAnalyzeId = id; }
+    public String getPendingAnalyzeId() { return this.pendingAnalyzeId; }
+
+    public void analizarMensaje(String docId, String contenido) {
+        setPendingAnalyzeId(docId);
+        if (tcpClient != null) {
+            tcpClient.sendAnalyzeMessage(contenido);
+        } else if (udpClient != null) {
+            udpClient.sendAnalyzeMessage(contenido);
+        }
+    }
+
     public ComponenteClientes   getPanelClientes()   { return panelClientes; }
     public ComponenteLogs       getPanelLogs()       { return panelLogs; }
     public ComponenteServidores getPanelServidores() { return panelServidores; }

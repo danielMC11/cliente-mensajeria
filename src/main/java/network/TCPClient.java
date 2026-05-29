@@ -137,6 +137,14 @@ public class TCPClient {
         sendMessage(JSONSerializer.serialize(request));
     }
 
+    public void sendAnalyzeMessage(String content) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("mensaje", content);
+        
+        MessageRequest request = new MessageRequest("ANALYZE_MESSAGE", payload);
+        sendMessage(JSONSerializer.serialize(request));
+    }
+
     public void sendMessage(String message) {
         if (out != null) {
             out.println(message);

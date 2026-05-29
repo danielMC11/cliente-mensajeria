@@ -166,6 +166,26 @@ public class SwingEventPublisher implements UIEventPublisher {
     }
 
     @Override
+    public void onMessageAnalyzed(String status, String sentimiento, double confianza) {
+        if (dashboard != null) {
+            SwingUtilities.invokeLater(() -> {
+                String id = dashboard.getPendingAnalyzeId();
+                if (id != null) {
+                    String resultText;
+                    if ("SUCCESS".equals(status)) {
+                        boolean esPositivo = "Positivo".equalsIgnoreCase(sentimiento);
+                        resultText = String.format("%s %.2f%%", esPositivo ? "Positivo" : "Negativo", confianza);
+                    } else {
+                        resultText = "Error";
+                    }
+                    dashboard.getTablaMensajes().setAnalysisResult(id, resultText);
+                    dashboard.setPendingAnalyzeId(null);
+                }
+            });
+        }
+    }
+
+    @Override
     public void onServerDisconnected() {
         SwingUtilities.invokeLater(() -> {
             JOptionPane.showMessageDialog(

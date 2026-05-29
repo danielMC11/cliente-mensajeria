@@ -23,6 +23,8 @@ public interface UIEventPublisher {
 
     /** Mensaje de texto recibido en tiempo real (privado o broadcast federado). */
     void onNewMessage(String message);
+    
+    void onMessageAnalyzed(String status, String sentimiento, double confianza);
 
     /** El servidor cerró la conexión TCP (apagado, caída de red, etc.). */
     void onServerDisconnected();
