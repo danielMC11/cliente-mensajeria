@@ -3,11 +3,12 @@ package network.handlers;
 import domain.ports.UIEventPublisher;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-public class ListMessagesHandler implements MessageHandler {
+public class ListResenasHandler implements MessageHandler {
     private final UIEventPublisher uiPublisher;
 
-    public ListMessagesHandler(UIEventPublisher uiPublisher) {
+    public ListResenasHandler(UIEventPublisher uiPublisher) {
         this.uiPublisher = uiPublisher;
     }
 
@@ -21,11 +22,11 @@ public class ListMessagesHandler implements MessageHandler {
     public void handle(Map<String, Object> payload) {
         if (payload != null && payload.containsKey("mensajes")) {
             List<Map<String, Object>> mensajes = (List<Map<String, Object>>) payload.get("mensajes");
-            // Filtramos los mensajes que no tienen productId (son mensajes de chat)
-            List<Map<String, Object>> chatMessages = mensajes.stream()
-                .filter(m -> !m.containsKey("productId") || m.get("productId") == null)
-                .collect(java.util.stream.Collectors.toList());
-            uiPublisher.onMessagesUpdated(chatMessages);
+            // Filtramos solo los mensajes que tienen productId (son reseñas)
+            List<Map<String, Object>> resenas = mensajes.stream()
+                .filter(m -> m.containsKey("productId") && m.get("productId") != null)
+                .collect(Collectors.toList());
+            uiPublisher.onResenasActualizadas(resenas);
         }
     }
 }

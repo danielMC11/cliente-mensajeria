@@ -145,6 +145,43 @@ public class TCPClient {
         sendMessage(JSONSerializer.serialize(request));
     }
 
+    /**
+     * Envía una reseña asociada a un producto.
+     * Flujo automático: 1) SEND_MESSAGE con productId, 2) ANALYZE_MESSAGE automático.
+     */
+    public void sendResena(String productoId, String contenido) {
+        if (repository != null) {
+            repository.saveResena(productoId, this.username, contenido);
+        }
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("username", this.username);
+        payload.put("message", contenido);
+        payload.put("productId", productoId);
+
+        MessageRequest request = new MessageRequest("SEND_MESSAGE", payload);
+        sendMessage(JSONSerializer.serialize(request));
+
+        // Análisis de sentimiento automático (sin botón manual)
+        sendAnalyzeMessage(contenido);
+    }
+
+    /**
+     * Solicita la lista de mensajes (incluye reseñas con productId).
+     * El handler del lado cliente separará chat de reseñas.
+     */
+    public void sendListResenasAction(String productoId) {
+        Map<String, Object> payload = new HashMap<>();
+        if (this.username != null) {
+            payload.put("username", this.username);
+        }
+        if (productoId != null) {
+            payload.put("productId", productoId);
+        }
+        MessageRequest request = new MessageRequest("LIST_MESSAGES", payload);
+        sendMessage(JSONSerializer.serialize(request));
+    }
+
     public void sendMessage(String message) {
         if (out != null) {
             out.println(message);

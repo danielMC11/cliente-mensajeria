@@ -118,6 +118,33 @@ public class UDPClient {
         sendActionAsync("ANALYZE_MESSAGE", payload);
     }
 
+    public void sendResena(String productoId, String contenido) {
+        if (repository != null) {
+            repository.saveResena(productoId, this.username, contenido);
+        }
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("username", this.username);
+        payload.put("message", contenido);
+        payload.put("productId", productoId);
+
+        sendActionAsync("SEND_MESSAGE", payload);
+
+        // Análisis automático
+        sendAnalyzeMessage(contenido);
+    }
+
+    public void sendListResenasAction(String productoId) {
+        Map<String, Object> payload = new HashMap<>();
+        if (this.username != null) {
+            payload.put("username", this.username);
+        }
+        if (productoId != null) {
+            payload.put("productId", productoId);
+        }
+        sendActionAsync("LIST_MESSAGES", payload);
+    }
+
     public void sendFile(java.io.File file, String targetUsername) {
         pendingFiles.add(file);
 
