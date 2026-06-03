@@ -32,7 +32,6 @@ public class TarjetaResena extends JPanel {
         this.resenaId = resenaId;
         setLayout(new BorderLayout(8, 4));
         setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
-        aplicarEstilo("PENDIENTE", 0.0);
 
         // --- Header: avatar + username + sentiment badge ---
         JPanel header = new JPanel(new BorderLayout(8, 0));
@@ -98,6 +97,8 @@ public class TarjetaResena extends JPanel {
 
         add(header, BorderLayout.NORTH);
         add(txtContenido, BorderLayout.CENTER);
+
+        aplicarEstilo("PENDIENTE", 0.0);
     }
 
     /**
