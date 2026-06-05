@@ -387,4 +387,31 @@ public class TCPClient {
         if (socket != null)
             socket.close();
     }
+
+    public void sendComment(String documentId, String content) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("documentId", documentId);
+        payload.put("username", this.username); // Se usa el username del cliente TCP actual
+        payload.put("content", content);
+
+        // Se usa la acción COMMENT_DOCUMENT que el enrutador del servidor está esperando
+        MessageRequest request = new MessageRequest("COMMENT_DOCUMENT", payload);
+        sendMessage(JSONSerializer.serialize(request));
+    }
+
+    /**
+     * Envía una petición al servidor para listar todos los comentarios asociados a un documento.
+     * Alínea sus campos con lo esperado por ListCommentsHandlerClient.
+     *
+     * @param documentId Identificador del documento del cual se quieren recuperar los comentarios.
+     */
+    public void sendListComments(Long documentId) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("document_id", documentId);
+
+        // Se usa la acción LIST_COMMENTS asociada a ListCommentsHandlerClient
+        MessageRequest request = new MessageRequest("LIST_COMMENTS", payload);
+        sendMessage(JSONSerializer.serialize(request));
+    }
+
 }

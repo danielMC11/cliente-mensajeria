@@ -191,9 +191,9 @@ public class ComponenteComentario extends JPanel {
     // -----------------------------------------------------------------------
 
     private JPanel crearFilaComentario(Map<String, Object> comentario) {
-        String usuario   = comentario.get("usuario")    != null ? comentario.get("usuario").toString()    : "Usuario";
-        String texto     = comentario.get("texto")      != null ? comentario.get("texto").toString()      : "";
-        String fecha     = comentario.get("fecha")      != null ? "  ·  " + comentario.get("fecha")       : "";
+        String usuario   = comentario.get("username")    != null ? comentario.get("username").toString()    : "Usuario";
+        String texto     = comentario.get("content")      != null ? comentario.get("content").toString()      : "";
+        String fecha     = comentario.get("created_at")      != null ? "  ·  " + comentario.get("created_at")       : "";
         String sentiment = comentario.get("sentiment")  != null ? comentario.get("sentiment").toString()  : null;
         Object confObj   = comentario.get("confidence");
 
@@ -362,4 +362,11 @@ public class ComponenteComentario extends JPanel {
         areaTexto.setText(placeholder);
         areaTexto.setForeground(new Color(160, 170, 190));
     }
+
+    /**
+     * Muestra el resultado del envío de un comentario.
+     * "SUCCESS" → agrega visualmente el comentario pendiente.
+     * Otro valor → muestra un aviso de error en el panel.
+     */
+
 }

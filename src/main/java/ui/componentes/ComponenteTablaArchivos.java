@@ -24,10 +24,14 @@ public class ComponenteTablaArchivos extends JPanel {
 
     public interface ArchivoActionListener {
         void onVerComentarios(String archivoId, ComponenteComentario panelComentarios);
+        void onComentar(String archivoId, String texto);
     }
 
     private final JPanel contenedor;
     private ArchivoActionListener listener;
+
+    // Rastrea el panel de comentarios actualmente abierto por docId
+    private final java.util.Map<String, ComponenteComentario> panelesPorId = new java.util.HashMap<>();
 
     public ComponenteTablaArchivos() {
         setLayout(new BorderLayout());
@@ -55,6 +59,7 @@ public class ComponenteTablaArchivos extends JPanel {
 
     public void updateFiles(List<Map<String, Object>> documentos) {
         contenedor.removeAll();
+        panelesPorId.clear();
 
         if (documentos == null || documentos.isEmpty()) {
             JLabel vacio = new JLabel("No hay archivos disponibles.");
@@ -72,6 +77,17 @@ public class ComponenteTablaArchivos extends JPanel {
 
         contenedor.revalidate();
         contenedor.repaint();
+    }
+
+    /**
+     * Actualiza los comentarios en el panel correspondiente al docId.
+     * Llamado desde Dashboard cuando llega onCommentsUpdated.
+     */
+    public void actualizarComentarios(String docId, List<Map<String, Object>> comentarios) {
+        ComponenteComentario panel = panelesPorId.get(docId);
+        if (panel != null) {
+            panel.cargarComentarios(comentarios);
+        }
     }
 
     private JPanel crearTarjeta(Map<String, Object> doc) {
@@ -125,9 +141,15 @@ public class ComponenteTablaArchivos extends JPanel {
         btnDescargar.addActionListener(e -> abrirVentanaDescarga(id, nombre));
         tarjeta.add(btnDescargar, gbc);
 
-        // Panel comentarios oculto
+        // Panel comentarios (oculto, registrado en el mapa)
         ComponenteComentario panelComentarios = new ComponenteComentario(id);
         panelComentarios.setVisible(false);
+        panelesPorId.put(id, panelComentarios);
+
+        // Conectar el botón COMENTAR del panel al listener
+        panelComentarios.setComentarListener((archivoId, texto) -> {
+            if (listener != null) listener.onComentar(archivoId, texto);
+        });
 
         // Fila 3: Botón VER COMENTARIOS
         gbc.gridy  = 3;
@@ -137,6 +159,12 @@ public class ComponenteTablaArchivos extends JPanel {
             boolean visible = !panelComentarios.isVisible();
             panelComentarios.setVisible(visible);
             btnComentarios.setText(visible ? "OCULTAR COMENTARIOS" : "VER COMENTARIOS");
+
+            // Al abrir, solicitar comentarios al servidor
+            if (visible && listener != null) {
+                listener.onVerComentarios(id, panelComentarios);
+            }
+
             tarjeta.revalidate();
             tarjeta.repaint();
             contenedor.revalidate();
@@ -175,7 +203,6 @@ public class ComponenteTablaArchivos extends JPanel {
         gbc.fill    = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
 
-        // Título
         gbc.gridy  = 0;
         gbc.insets = new Insets(0, 0, 4, 0);
         JLabel lblTitulo = new JLabel("Descargar");
@@ -183,7 +210,6 @@ public class ComponenteTablaArchivos extends JPanel {
         lblTitulo.setForeground(new Color(30, 40, 70));
         contenido.add(lblTitulo, gbc);
 
-        // Nombre del archivo
         gbc.gridy  = 1;
         gbc.insets = new Insets(0, 0, 20, 0);
         JLabel lblNombre = new JLabel(nombreArchivo);
@@ -191,14 +217,12 @@ public class ComponenteTablaArchivos extends JPanel {
         lblNombre.setForeground(new Color(100, 115, 140));
         contenido.add(lblNombre, gbc);
 
-        // Separador
         gbc.gridy  = 2;
         gbc.insets = new Insets(0, 0, 16, 0);
         JSeparator sep = new JSeparator();
         sep.setForeground(new Color(220, 228, 245));
         contenido.add(sep, gbc);
 
-        // Botón Original
         gbc.gridy  = 3;
         gbc.insets = new Insets(0, 0, 8, 0);
         JButton btnOriginal = crearBotonModal("Descargar original", "Archivo tal como fue subido");
@@ -208,7 +232,6 @@ public class ComponenteTablaArchivos extends JPanel {
         });
         contenido.add(btnOriginal, gbc);
 
-        // Botón Hash
         gbc.gridy  = 4;
         gbc.insets = new Insets(0, 0, 8, 0);
         JButton btnHash = crearBotonModal("Descargar hash", "Archivo de verificación de integridad");
@@ -218,7 +241,6 @@ public class ComponenteTablaArchivos extends JPanel {
         });
         contenido.add(btnHash, gbc);
 
-        // Botón Encriptado
         gbc.gridy  = 5;
         gbc.insets = new Insets(0, 0, 20, 0);
         JButton btnEncriptado = crearBotonModal("Descargar encriptado", "Archivo cifrado con clave pública");
@@ -228,7 +250,6 @@ public class ComponenteTablaArchivos extends JPanel {
         });
         contenido.add(btnEncriptado, gbc);
 
-        // Cancelar
         gbc.gridy  = 6;
         gbc.insets = new Insets(0, 0, 0, 0);
         JButton btnCancelar = new JButton("Cancelar");
@@ -249,11 +270,6 @@ public class ComponenteTablaArchivos extends JPanel {
         dialog.setVisible(true);
     }
 
-    /**
-     * Replica exactamente la lógica de EditorGenerico#accion():
-     * obtiene el Dashboard desde la jerarquía de ventanas y llama
-     * dashboard.iniciarDescarga(docId, filename, format).
-     */
     private void iniciarDescarga(String archivoId, String nombreArchivo, String format) {
         Window ventana = SwingUtilities.getWindowAncestor(this);
         if (ventana instanceof ui.Dashboard) {
@@ -280,7 +296,6 @@ public class ComponenteTablaArchivos extends JPanel {
                 super.paintComponent(g);
             }
         };
-
         btn.setLayout(new GridBagLayout());
         btn.setOpaque(false);
         btn.setContentAreaFilled(false);
@@ -294,22 +309,21 @@ public class ComponenteTablaArchivos extends JPanel {
         btn.setPreferredSize(new Dimension(280, 52));
 
         GridBagConstraints g = new GridBagConstraints();
-        g.gridx   = 0;
-        g.weightx = 1.0;
-        g.fill    = GridBagConstraints.HORIZONTAL;
-        g.anchor  = GridBagConstraints.WEST;
+        g.gridx = 0; g.weightx = 1.0;
+        g.fill = GridBagConstraints.HORIZONTAL;
+        g.anchor = GridBagConstraints.WEST;
 
         g.gridy = 0;
-        JLabel lblTitulo = new JLabel(titulo);
-        lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        lblTitulo.setForeground(new Color(30, 50, 100));
-        btn.add(lblTitulo, g);
+        JLabel lblT = new JLabel(titulo);
+        lblT.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblT.setForeground(new Color(30, 50, 100));
+        btn.add(lblT, g);
 
         g.gridy = 1;
-        JLabel lblSub = new JLabel(subtitulo);
-        lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        lblSub.setForeground(new Color(110, 125, 155));
-        btn.add(lblSub, g);
+        JLabel lblS = new JLabel(subtitulo);
+        lblS.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        lblS.setForeground(new Color(110, 125, 155));
+        btn.add(lblS, g);
 
         return btn;
     }
@@ -363,5 +377,23 @@ public class ComponenteTablaArchivos extends JPanel {
         int exp = (int) (Math.log(bytes) / Math.log(1024));
         String pre = "KMGTPE".charAt(exp - 1) + "B";
         return String.format("%.1f %s", bytes / Math.pow(1024, exp), pre);
+    }
+
+    public void mostrarAck(String status, String message) {
+        if ("SUCCESS".equals(status)) {
+            JOptionPane.showMessageDialog(
+                    SwingUtilities.getWindowAncestor(this),
+                    "¡Comentario enviado con éxito!",
+                    "Éxito",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+        } else {
+            JOptionPane.showMessageDialog(
+                    SwingUtilities.getWindowAncestor(this),
+                    "Error al enviar comentario: " + message,
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
 }

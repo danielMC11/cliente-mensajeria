@@ -92,6 +92,32 @@ public class Dashboard extends JFrame {
         panelServidores = new ComponenteServidores();
         panelPeerLogs   = new ComponentePeerLogs();
         tablaArchivos   = new ComponenteTablaArchivos();
+
+        // Conectar listener de comentarios en tablaArchivos
+        tablaArchivos.setArchivoActionListener(new ComponenteTablaArchivos.ArchivoActionListener() {
+            @Override
+            public void onVerComentarios(String archivoId, ComponenteComentario panelComentarios) {
+                // Solicitar comentarios al servidor
+                if (tcpClient != null) {
+                    tcpClient.sendListComments(Long.parseLong(archivoId));
+                } else if (udpClient != null) {
+                    udpClient.sendActionAsync("LIST_COMMENTS",
+                            java.util.Map.of("document_id", Long.parseLong(archivoId)));
+                }
+            }
+
+            @Override
+            public void onComentar(String archivoId, String texto) {
+                if (tcpClient != null) {
+                    tcpClient.sendComment(archivoId, texto);
+                } else if (udpClient != null) {
+                    udpClient.sendActionAsync("COMMENT_DOCUMENT",
+                            java.util.Map.of("documentId", Long.parseLong(archivoId),
+                                    "content", texto));
+                }
+            }
+        });
+
         tablaMensajes   = new ComponenteTablaMensajes();
 
         // ── Centro: CardLayout ──────────────────────────────────────────────
@@ -450,6 +476,16 @@ public class Dashboard extends JFrame {
         } else if (udpClient != null) {
             udpClient.sendAnalyzeMessage(contenido);
         }
+    }
+
+    /** Llamado por SwingEventPublisher.SendCommentAckHandler */
+    public void onSendCommentAck(String status, String message) {
+            tablaArchivos.mostrarAck(status, message);
+    }
+
+    /** Llamado por SwingEventPublisher.onCommentsUpdated */
+    public void onCommentsUpdated(String docId, List<Map<String, Object>> comments) {
+        tablaArchivos.actualizarComentarios(docId, comments);
     }
 
     public ComponenteClientes   getPanelClientes()   { return panelClientes; }
