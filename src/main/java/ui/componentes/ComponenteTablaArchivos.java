@@ -23,7 +23,6 @@ public class ComponenteTablaArchivos extends JPanel {
     private static final Font FUENTE_BTN    = new Font("Segoe UI", Font.PLAIN, 12);
 
     public interface ArchivoActionListener {
-        void onDescargar(String archivoId);
         void onVerComentarios(String archivoId, ComponenteComentario panelComentarios);
     }
 
@@ -88,7 +87,6 @@ public class ComponenteTablaArchivos extends JPanel {
             catch (Exception ignored) {}
         }
 
-        // Tarjeta: GridBagLayout para control total de filas
         JPanel tarjeta = new JPanel(new GridBagLayout());
         tarjeta.setBackground(COLOR_TARJETA);
         tarjeta.setBorder(BorderFactory.createCompoundBorder(
@@ -98,13 +96,12 @@ public class ComponenteTablaArchivos extends JPanel {
         tarjeta.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx   = 0;
+        gbc.fill    = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
-        gbc.insets = new Insets(0, 0, 0, 0);
 
         // Fila 0: Nombre
-        gbc.gridy = 0;
+        gbc.gridy  = 0;
         gbc.insets = new Insets(0, 0, 6, 0);
         JLabel lblNombre = new JLabel(nombre);
         lblNombre.setFont(FUENTE_NOMBRE);
@@ -112,7 +109,7 @@ public class ComponenteTablaArchivos extends JPanel {
         tarjeta.add(lblNombre, gbc);
 
         // Fila 1: Badges
-        gbc.gridy = 1;
+        gbc.gridy  = 1;
         gbc.insets = new Insets(0, 0, 10, 0);
         JPanel filaBadges = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         filaBadges.setBackground(COLOR_TARJETA);
@@ -121,13 +118,11 @@ public class ComponenteTablaArchivos extends JPanel {
         filaBadges.add(crearBadge(propietario));
         tarjeta.add(filaBadges, gbc);
 
-        // Fila 2: Botón DESCARGAR
-        gbc.gridy = 2;
+        // Fila 2: Botón DESCARGAR → abre modal
+        gbc.gridy  = 2;
         gbc.insets = new Insets(0, 0, 4, 0);
         JButton btnDescargar = crearBoton("DESCARGAR");
-        btnDescargar.addActionListener(e -> {
-            if (listener != null) listener.onDescargar(id);
-        });
+        btnDescargar.addActionListener(e -> abrirVentanaDescarga(id, nombre));
         tarjeta.add(btnDescargar, gbc);
 
         // Panel comentarios oculto
@@ -135,7 +130,7 @@ public class ComponenteTablaArchivos extends JPanel {
         panelComentarios.setVisible(false);
 
         // Fila 3: Botón VER COMENTARIOS
-        gbc.gridy = 3;
+        gbc.gridy  = 3;
         gbc.insets = new Insets(0, 0, 0, 0);
         JButton btnComentarios = crearBoton("VER COMENTARIOS");
         btnComentarios.addActionListener(e -> {
@@ -149,12 +144,174 @@ public class ComponenteTablaArchivos extends JPanel {
         });
         tarjeta.add(btnComentarios, gbc);
 
-        // Fila 4: Panel de comentarios (expandible)
-        gbc.gridy = 4;
+        // Fila 4: Panel comentarios expandible
+        gbc.gridy  = 4;
         gbc.insets = new Insets(6, 0, 0, 0);
         tarjeta.add(panelComentarios, gbc);
 
         return tarjeta;
+    }
+
+    // -----------------------------------------------------------------------
+    // Ventana modal de descarga
+    // -----------------------------------------------------------------------
+
+    private void abrirVentanaDescarga(String archivoId, String nombreArchivo) {
+        Window ventanaPadre = SwingUtilities.getWindowAncestor(this);
+
+        JDialog dialog = (ventanaPadre instanceof Frame)
+                ? new JDialog((Frame) ventanaPadre, "Descargar archivo", true)
+                : new JDialog((Dialog) ventanaPadre, "Descargar archivo", true);
+
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setResizable(false);
+
+        JPanel contenido = new JPanel(new GridBagLayout());
+        contenido.setBackground(Color.WHITE);
+        contenido.setBorder(BorderFactory.createEmptyBorder(24, 28, 24, 28));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx   = 0;
+        gbc.fill    = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+
+        // Título
+        gbc.gridy  = 0;
+        gbc.insets = new Insets(0, 0, 4, 0);
+        JLabel lblTitulo = new JLabel("Descargar");
+        lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblTitulo.setForeground(new Color(30, 40, 70));
+        contenido.add(lblTitulo, gbc);
+
+        // Nombre del archivo
+        gbc.gridy  = 1;
+        gbc.insets = new Insets(0, 0, 20, 0);
+        JLabel lblNombre = new JLabel(nombreArchivo);
+        lblNombre.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblNombre.setForeground(new Color(100, 115, 140));
+        contenido.add(lblNombre, gbc);
+
+        // Separador
+        gbc.gridy  = 2;
+        gbc.insets = new Insets(0, 0, 16, 0);
+        JSeparator sep = new JSeparator();
+        sep.setForeground(new Color(220, 228, 245));
+        contenido.add(sep, gbc);
+
+        // Botón Original
+        gbc.gridy  = 3;
+        gbc.insets = new Insets(0, 0, 8, 0);
+        JButton btnOriginal = crearBotonModal("Descargar original", "Archivo tal como fue subido");
+        btnOriginal.addActionListener(e -> {
+            dialog.dispose();
+            iniciarDescarga(archivoId, nombreArchivo, "ORG");
+        });
+        contenido.add(btnOriginal, gbc);
+
+        // Botón Hash
+        gbc.gridy  = 4;
+        gbc.insets = new Insets(0, 0, 8, 0);
+        JButton btnHash = crearBotonModal("Descargar hash", "Archivo de verificación de integridad");
+        btnHash.addActionListener(e -> {
+            dialog.dispose();
+            iniciarDescarga(archivoId, nombreArchivo, "HSH");
+        });
+        contenido.add(btnHash, gbc);
+
+        // Botón Encriptado
+        gbc.gridy  = 5;
+        gbc.insets = new Insets(0, 0, 20, 0);
+        JButton btnEncriptado = crearBotonModal("Descargar encriptado", "Archivo cifrado con clave pública");
+        btnEncriptado.addActionListener(e -> {
+            dialog.dispose();
+            iniciarDescarga(archivoId, nombreArchivo, "ENC");
+        });
+        contenido.add(btnEncriptado, gbc);
+
+        // Cancelar
+        gbc.gridy  = 6;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        JButton btnCancelar = new JButton("Cancelar");
+        btnCancelar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btnCancelar.setForeground(new Color(100, 115, 140));
+        btnCancelar.setContentAreaFilled(false);
+        btnCancelar.setBorderPainted(false);
+        btnCancelar.setFocusPainted(false);
+        btnCancelar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnCancelar.setHorizontalAlignment(SwingConstants.CENTER);
+        btnCancelar.addActionListener(e -> dialog.dispose());
+        contenido.add(btnCancelar, gbc);
+
+        dialog.setContentPane(contenido);
+        dialog.pack();
+        dialog.setMinimumSize(new Dimension(340, 0));
+        dialog.setLocationRelativeTo(ventanaPadre);
+        dialog.setVisible(true);
+    }
+
+    /**
+     * Replica exactamente la lógica de EditorGenerico#accion():
+     * obtiene el Dashboard desde la jerarquía de ventanas y llama
+     * dashboard.iniciarDescarga(docId, filename, format).
+     */
+    private void iniciarDescarga(String archivoId, String nombreArchivo, String format) {
+        Window ventana = SwingUtilities.getWindowAncestor(this);
+        if (ventana instanceof ui.Dashboard) {
+            ((ui.Dashboard) ventana).iniciarDescarga(archivoId, nombreArchivo, format);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Helpers visuales
+    // -----------------------------------------------------------------------
+
+    private JButton crearBotonModal(String titulo, String subtitulo) {
+        JButton btn = new JButton() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                Color bg = getModel().isRollover()
+                        ? new Color(220, 228, 245)
+                        : new Color(240, 244, 252);
+                g2.setColor(bg);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+
+        btn.setLayout(new GridBagLayout());
+        btn.setOpaque(false);
+        btn.setContentAreaFilled(false);
+        btn.setFocusPainted(false);
+        btn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(190, 205, 230), 1, true),
+                BorderFactory.createEmptyBorder(10, 14, 10, 14)
+        ));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setMinimumSize(new Dimension(280, 52));
+        btn.setPreferredSize(new Dimension(280, 52));
+
+        GridBagConstraints g = new GridBagConstraints();
+        g.gridx   = 0;
+        g.weightx = 1.0;
+        g.fill    = GridBagConstraints.HORIZONTAL;
+        g.anchor  = GridBagConstraints.WEST;
+
+        g.gridy = 0;
+        JLabel lblTitulo = new JLabel(titulo);
+        lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblTitulo.setForeground(new Color(30, 50, 100));
+        btn.add(lblTitulo, g);
+
+        g.gridy = 1;
+        JLabel lblSub = new JLabel(subtitulo);
+        lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        lblSub.setForeground(new Color(110, 125, 155));
+        btn.add(lblSub, g);
+
+        return btn;
     }
 
     private JLabel crearBadge(String texto) {
@@ -195,9 +352,9 @@ public class ComponenteTablaArchivos extends JPanel {
                 BorderFactory.createEmptyBorder(5, 12, 5, 12)
         ));
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setPreferredSize(new Dimension(Integer.MAX_VALUE, 30));
         btn.setMinimumSize(new Dimension(50, 30));
         btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        btn.setPreferredSize(new Dimension(Integer.MAX_VALUE, 30));
         return btn;
     }
 
