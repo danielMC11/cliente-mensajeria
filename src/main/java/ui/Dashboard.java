@@ -36,7 +36,7 @@ public class Dashboard extends JFrame {
 
     // Layout
     private final CardLayout cardLayout = new CardLayout();
-    private final JPanel pnlCartas;
+    private final JPanel pnlCartas = new JPanel(cardLayout);
     private final JRadioButton rbArchivos;
     private final JRadioButton rbMensajes;
     private JTabbedPane tabsPane;  // Campo para que los listeners de toolbar lo referencien
@@ -46,8 +46,9 @@ public class Dashboard extends JFrame {
     private final ComponenteLogs        panelLogs;
     private final ComponenteServidores  panelServidores;
     private final ComponentePeerLogs    panelPeerLogs;
-    private final ComponenteTablaArchivos tablaArchivos;
-    private final ComponenteTablaMensajes tablaMensajes;
+    private final ComponenteTablaProductos panelProductos;
+    private final ComponenteChat        panelChat;
+    private final ComponentePanelResenas panelResenas;
 
     // Red
     private final TCPClient  tcpClient;
@@ -91,16 +92,55 @@ public class Dashboard extends JFrame {
         panelLogs       = new ComponenteLogs();
         panelServidores = new ComponenteServidores();
         panelPeerLogs   = new ComponentePeerLogs();
-        tablaArchivos   = new ComponenteTablaArchivos();
-        tablaMensajes   = new ComponenteTablaMensajes();
+        panelProductos  = new ComponenteTablaProductos();
+        panelChat       = new ComponenteChat();
+        panelResenas    = new ComponentePanelResenas();
+
+        // Configurar ComponenteChat
+        panelChat.setUsername(username);
+        panelChat.setEnviarListener((targetUsername, contenido) -> {
+            if (tcpClient != null) {
+                if (targetUsername == null) tcpClient.sendDirectMessage(null, contenido);
+                else tcpClient.sendDirectMessage(targetUsername, contenido);
+            } else if (udpClient != null) {
+                if (targetUsername == null) udpClient.sendDirectMessage(null, contenido);
+                else udpClient.sendDirectMessage(targetUsername, contenido);
+            }
+        });
+
+        // Configurar navegación de reseñas
+        panelProductos.setResenasListener((productoId, productoNombre) -> {
+            panelResenas.setProductoActual(productoId, productoNombre);
+            cardLayout.show(pnlCartas, "PANEL_RESENAS");
+            if (tcpClient != null) {
+                tcpClient.sendListResenasAction(productoId);
+            } else if (udpClient != null) {
+                udpClient.sendListResenasAction(productoId);
+            }
+        });
+
+        panelResenas.setVolverListener(() -> {
+            cardLayout.show(pnlCartas, "TABLA_PRODUCTOS");
+            // Se puede pedir refrescar productos aquí si es necesario
+        });
+
+        panelResenas.setPublicarListener((productoId, contenido) -> {
+            // Mostrar la reseña inmediatamente localmente en estado PENDIENTE
+            panelResenas.agregarResenaLocal("", this.username, contenido);
+            if (tcpClient != null) {
+                tcpClient.sendResena(productoId, contenido);
+            } else if (udpClient != null) {
+                udpClient.sendResena(productoId, contenido);
+            }
+        });
 
         // ── Centro: CardLayout ──────────────────────────────────────────────
-        pnlCartas = new JPanel(cardLayout);
-        pnlCartas.add(tablaArchivos, "TABLA_ARCHIVOS");
-        pnlCartas.add(tablaMensajes, "TABLA_MENSAJES");
+        pnlCartas.add(panelProductos, "TABLA_PRODUCTOS");
+        pnlCartas.add(panelChat, "TABLA_MENSAJES");
+        pnlCartas.add(panelResenas, "PANEL_RESENAS");
 
-        rbArchivos = new JRadioButton("Archivos", true);
-        rbMensajes = new JRadioButton("Mensajes");
+        rbArchivos = new JRadioButton("Productos", true);
+        rbMensajes = new JRadioButton("Chat General");
         ButtonGroup grupo = new ButtonGroup();
         grupo.add(rbArchivos);
         grupo.add(rbMensajes);
@@ -148,6 +188,12 @@ public class Dashboard extends JFrame {
 
         // Refresh inicial de clientes
         panelClientes.setRefreshAction(e -> enviarPeticion("LIST_CLIENTS"));
+        
+        // Listener para actualizar destinatarios en el chat
+        Timer t = new Timer(2000, e -> {
+            panelChat.actualizarDestinatarios(panelClientes.getCurrentUsernames());
+        });
+        t.start();
 
         setLocationRelativeTo(null);
     }
@@ -166,7 +212,7 @@ public class Dashboard extends JFrame {
 
         btnFiltrar.addActionListener(e -> {
             if (rbArchivos.isSelected()) {
-                cardLayout.show(pnlCartas, "TABLA_ARCHIVOS");
+                cardLayout.show(pnlCartas, "TABLA_PRODUCTOS");
                 enviarPeticion("LIST_DOCUMENTS");
             } else {
                 cardLayout.show(pnlCartas, "TABLA_MENSAJES");
@@ -456,8 +502,9 @@ public class Dashboard extends JFrame {
     public ComponenteLogs       getPanelLogs()       { return panelLogs; }
     public ComponenteServidores getPanelServidores() { return panelServidores; }
     public ComponentePeerLogs   getPanelPeerLogs()   { return panelPeerLogs; }
-    public ComponenteTablaArchivos getTablaArchivos()  { return tablaArchivos; }
-    public ComponenteTablaMensajes getTablaMensajes()  { return tablaMensajes; }
+    public ComponenteTablaProductos getPanelProductos()  { return panelProductos; }
+    public ComponenteChat           getPanelChat()       { return panelChat; }
+    public ComponentePanelResenas   getPanelResenas()    { return panelResenas; }
     public TCPClient getTcpClient() { return tcpClient; }
     public UDPClient getUdpClient() { return udpClient; }
 }

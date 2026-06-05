@@ -41,4 +41,18 @@ public class H2ChatRepository implements ChatRepository {
             System.err.println("Error al guardar documento: " + e.getMessage());
         }
     }
+
+    @Override
+    public void saveResena(String productoId, String autorUsername, String contenido) {
+        String sql = "INSERT INTO resenas (producto_id, autor_username, contenido) VALUES (?, ?, ?)";
+        try (Connection conn = h2db.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, productoId);
+            pstmt.setString(2, autorUsername);
+            pstmt.setString(3, contenido);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Error al guardar reseña: " + e.getMessage());
+        }
+    }
 }

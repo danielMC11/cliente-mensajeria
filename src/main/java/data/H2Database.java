@@ -57,9 +57,17 @@ public class H2Database {
                 + "username VARCHAR(255), "
                 + "timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);";
 
+        String sqlResenas = "CREATE TABLE IF NOT EXISTS resenas ("
+                + "id INT AUTO_INCREMENT PRIMARY KEY, "
+                + "producto_id VARCHAR(255), "
+                + "autor_username VARCHAR(255), "
+                + "contenido TEXT, "
+                + "timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);";
+
         try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
             stmt.execute(sqlMessages);
             stmt.execute(sqlDocuments);
+            stmt.execute(sqlResenas);
             System.out.println("H2: tablas verificadas/creadas correctamente.");
         } catch (SQLException e) {
             System.err.println("Error inicializando tablas H2: " + e.getMessage());

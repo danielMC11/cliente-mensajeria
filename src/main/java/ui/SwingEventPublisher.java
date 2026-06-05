@@ -55,7 +55,7 @@ public class SwingEventPublisher implements UIEventPublisher {
         if (dashboard != null && messages != null) {
             SwingUtilities.invokeLater(() -> {
                 try {
-                    dashboard.getTablaMensajes().updateFiles(messages);
+                    dashboard.getPanelChat().updateMessages(messages);
                 } catch (Exception ex) {
                     System.err.println("Error actualizando mensajes: " + ex.getMessage());
                 }
@@ -68,7 +68,7 @@ public class SwingEventPublisher implements UIEventPublisher {
         if (dashboard != null && documents != null) {
             SwingUtilities.invokeLater(() -> {
                 try {
-                    dashboard.getTablaArchivos().updateFiles(documents);
+                    dashboard.getPanelProductos().updateProductos(documents);
                 } catch (Exception ex) {
                     System.err.println("Error actualizando documentos: " + ex.getMessage());
                 }
@@ -173,14 +173,7 @@ public class SwingEventPublisher implements UIEventPublisher {
             SwingUtilities.invokeLater(() -> {
                 String id = dashboard.getPendingAnalyzeId();
                 if (id != null) {
-                    String resultText;
-                    if ("SUCCESS".equals(status)) {
-                        boolean esPositivo = "Positivo".equalsIgnoreCase(sentimiento);
-                        resultText = String.format("%s %.2f%%", esPositivo ? "Positivo" : "Negativo", confianza);
-                    } else {
-                        resultText = "Error";
-                    }
-                    dashboard.getTablaMensajes().setAnalysisResult(id, resultText);
+                    dashboard.getPanelResenas().actualizarSentimiento(id, sentimiento, confianza);
                     dashboard.setPendingAnalyzeId(null);
                 }
             });
@@ -289,5 +282,42 @@ public class SwingEventPublisher implements UIEventPublisher {
     private String str(Map<String, Object> map, String key) {
         Object v = map.get(key);
         return v != null ? v.toString() : "N/A";
+    }
+
+    // ── Eventos de Productos y Reseñas ────────────────────────────────────────
+
+    @Override
+    public void onProductosActualizados(List<Map<String, Object>> productos) {
+        if (dashboard != null && productos != null) {
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    dashboard.getPanelProductos().updateProductos(productos);
+                } catch (Exception ex) {
+                    System.err.println("Error actualizando productos: " + ex.getMessage());
+                }
+            });
+        }
+    }
+
+    @Override
+    public void onResenasActualizadas(List<Map<String, Object>> resenas) {
+        if (dashboard != null && resenas != null) {
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    dashboard.getPanelResenas().updateResenas(resenas);
+                } catch (Exception ex) {
+                    System.err.println("Error actualizando reseñas: " + ex.getMessage());
+                }
+            });
+        }
+    }
+
+    @Override
+    public void onResenaAnalizada(String resenaId, String sentimiento, double confianza) {
+        if (dashboard != null) {
+            SwingUtilities.invokeLater(() -> {
+                dashboard.getPanelResenas().actualizarSentimiento(resenaId, sentimiento, confianza);
+            });
+        }
     }
 }
