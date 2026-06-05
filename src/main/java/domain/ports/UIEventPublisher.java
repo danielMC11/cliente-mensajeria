@@ -14,7 +14,7 @@ public interface UIEventPublisher {
     void onLogsUpdated(List<Map<String, Object>> logs);
     void onMessagesUpdated(List<Map<String, Object>> messages);
     void onDocumentsUpdated(List<Map<String, Object>> documents);
-    void onUploadStatus(boolean success, String message);
+    void onUploadStatus(boolean success, String message, String targetUsername);
     void onDownloadFinished(boolean success, String filename);
     void onConnectAck(String status, String message);
     void onUploadInitAck(String token);
@@ -23,8 +23,9 @@ public interface UIEventPublisher {
 
     /** Mensaje de texto recibido en tiempo real (privado o broadcast federado). */
     void onNewMessage(String message);
-    
     void onMessageAnalyzed(String status, String sentimiento, double confianza);
+    
+    void onSendMessageAck(String status, String message);
 
     /** El servidor cerró la conexión TCP (apagado, caída de red, etc.). */
     void onServerDisconnected();

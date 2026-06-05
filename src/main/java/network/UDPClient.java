@@ -143,12 +143,14 @@ public class UDPClient {
         payload.put("extension", extension);
         payload.put("mimeType", "application/octet-stream");
         payload.put("username", this.username);
-        
-        if (targetUsername != null && !targetUsername.trim().isEmpty() && !targetUsername.equals("— Todos —")) {
-            payload.put("targetUsername", targetUsername);
-        }
+        payload.put("targetUsername", targetUsername);
+
 
         sendActionAsync("UPLOAD_INIT", payload);
+    }
+
+    public void sendUploadConfirmation(Map<String, Object> payload) {
+        sendActionAsync("UPLOAD_CONFIRMATION", payload);
     }
 
     public void startFileTransfer(String token) {
@@ -277,5 +279,23 @@ public class UDPClient {
                 uiPublisher.onDownloadFinished(success, targetFile.getName());
             }
         }).start();
+    }
+
+    public void disconnect() {
+        try (java.net.DatagramSocket socket = new java.net.DatagramSocket()) {
+            Map<String, Object> payload = new HashMap<>();
+            if (this.username != null) {
+                payload.put("username", this.username);
+            }
+            MessageRequest request = new MessageRequest("DISCONNECT", payload);
+            String json = JSONSerializer.serialize(request);
+            byte[] sendData = json.getBytes();
+            java.net.InetAddress serverAddress = java.net.InetAddress.getByName(ip);
+            java.net.DatagramPacket sendPacket = new java.net.DatagramPacket(sendData, sendData.length, serverAddress, port);
+            socket.send(sendPacket);
+            System.out.println("UDP DISCONNECT enviado: " + json);
+        } catch (Exception e) {
+            System.err.println("Error enviando DISCONNECT por UDP: " + e.getMessage());
+        }
     }
 }

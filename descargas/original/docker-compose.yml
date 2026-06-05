@@ -1,0 +1,18 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: messaging-db-2
+    restart: always
+    environment:
+      MYSQL_DATABASE: messaging_system
+      MYSQL_USER: messaging_app
+      MYSQL_PASSWORD: messaging_app
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3308:3306"
+    volumes:
+      - db_data_2:/var/lib/mysql
+      - ./persistencia/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+
+volumes:
+  db_data_2:

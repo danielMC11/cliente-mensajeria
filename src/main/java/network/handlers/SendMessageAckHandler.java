@@ -29,9 +29,6 @@ public class SendMessageAckHandler implements MessageHandler {
         String message = String.valueOf(payload.getOrDefault("message", ""));
         System.out.println("[SEND_MESSAGE_ACK] " + status + ": " + message);
 
-        // Refrescar la tabla para que el remitente vea su mensaje enviado
-        // (especialmente importante para mensajes privados, ya que el remitente
-        // no recibe NEW_MESSAGE_ACK, solo el receptor lo hace)
-        uiPublisher.onNewMessage("");
+        uiPublisher.onSendMessageAck(status, message);
     }
 }

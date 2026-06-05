@@ -69,8 +69,6 @@ public class VentanaConexion extends JFrame {
                         router.registerHandler(new ListDocumentsHandler(uiPublisher));
                         router.registerHandler(new UploadInitAckHandler(uiPublisher));
                         router.registerHandler(new DownloadInitAckHandler(uiPublisher));
-                        router.registerHandler(new UploadStatusHandler(uiPublisher, "UPLOAD_SUCCESS"));
-                        router.registerHandler(new UploadStatusHandler(uiPublisher, "UPLOAD_FAILED"));
 
                         // --- Handlers P2P distribuidos ---
                         router.registerHandler(new ServerJoinedHandler(uiPublisher));
@@ -115,9 +113,6 @@ public class VentanaConexion extends JFrame {
                         router.registerHandler(new ListDocumentsHandler(uiPublisher));
                         router.registerHandler(new UploadInitAckHandler(uiPublisher));
                         router.registerHandler(new DownloadInitAckHandler(uiPublisher));
-                        router.registerHandler(new UploadStatusHandler(uiPublisher, "UPLOAD_SUCCESS"));
-                        router.registerHandler(new UploadStatusHandler(uiPublisher, "UPLOAD_FAILED"));
-
                         // --- Handlers P2P distribuidos ---
                         router.registerHandler(new ServerJoinedHandler(uiPublisher));
                         router.registerHandler(new ServerLeftHandler(uiPublisher, "SERVER_LEFT"));

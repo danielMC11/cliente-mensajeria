@@ -9,6 +9,7 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import domain.ports.ChatRepository;
 
@@ -61,6 +62,9 @@ public class Dashboard extends JFrame {
     private final JLabel lblStatus;
     private final JLabel lblClusterEvent;  // muestra join/leave temporalmente
 
+    // Guardar el último destinatario para mostrar el mensaje de confirmación
+    private String ultimoDestinatarioMensaje;
+
     public Dashboard(String username, String ip, String puerto,
                      TCPClient tcpClient, UDPClient udpClient,
                      Runnable onDisconnect, ChatRepository repository) {
@@ -72,7 +76,14 @@ public class Dashboard extends JFrame {
 
         setTitle("Dashboard P2P — " + username + " | " + ip + ":" + puerto);
         setSize(1400, 750);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                realizarDesconexion();
+                System.exit(0);
+            }
+        });
         setLayout(new BorderLayout(4, 4));
 
         // ── Componentes ────────────────────────────────────────────────────
@@ -211,6 +222,7 @@ public class Dashboard extends JFrame {
         }
     }
 
+
     // ── Notificación de cluster ─────────────────────────────────────────────
 
     /**
@@ -278,7 +290,7 @@ public class Dashboard extends JFrame {
                 btnEnviar.setEnabled(false);
                 btnEnviar.setText("Enviando...");
                 String target = (String) cmbDestinatario.getSelectedItem();
-                String finalTarget = "— Todos —".equals(target) ? null : target;
+                String finalTarget = "— Todos —".equals(target) ? "ALL" : target;
                 
                 for (java.io.File f : archivosSeleccionados[0]) {
                     if (tcpClient != null) {
@@ -287,12 +299,7 @@ public class Dashboard extends JFrame {
                         udpClient.sendFile(f, finalTarget);
                     }
                 }
-                
-                if (finalTarget == null) {
-                    JOptionPane.showMessageDialog(ventana, "Archivo(s) enviado(s) a todos.");
-                } else {
-                    JOptionPane.showMessageDialog(ventana, "Archivo(s) enviado(s) a " + finalTarget + ".");
-                }
+
                 ventana.dispose();
             }
         });
@@ -353,14 +360,13 @@ public class Dashboard extends JFrame {
                 return;
             }
             String target = (String) cmbDestinatario.getSelectedItem();
+            ultimoDestinatarioMensaje = target;
             if ("— Todos —".equals(target)) {
-                if (tcpClient != null) tcpClient.sendDirectMessage(null, content);
-                else if (udpClient != null) udpClient.sendDirectMessage(null, content);
-                JOptionPane.showMessageDialog(ventana, "Mensaje enviado a todos.");
+                if (tcpClient != null) tcpClient.sendDirectMessage("ALL", content);
+                else if (udpClient != null) udpClient.sendDirectMessage("ALL", content);
             } else {
                 if (tcpClient != null) tcpClient.sendDirectMessage(target, content);
                 else if (udpClient != null) udpClient.sendDirectMessage(target, content);
-                JOptionPane.showMessageDialog(ventana, "Mensaje enviado a " + target + ".");
             }
             txtMsg.setText("");
             ventana.dispose();
@@ -377,6 +383,23 @@ public class Dashboard extends JFrame {
         ventana.setVisible(true);
     }
 
+    public void showSendMessageAck(String status, String message) {
+        if ("SUCCESS".equals(status)) {
+            String target = ultimoDestinatarioMensaje;
+            if (target != null) {
+                if ("— Todos —".equals(target)) {
+                    JOptionPane.showMessageDialog(this, "Mensaje enviado a todos.");
+                } else {
+                    JOptionPane.showMessageDialog(this, "Mensaje enviado a " + target + ".");
+                }
+            } else {
+                JOptionPane.showMessageDialog(this, message, "Mensaje Enviado", JOptionPane.INFORMATION_MESSAGE);
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "Error al enviar: " + message, "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     // ── Botón desconectar ────────────────────────────────────────────────────
 
     private JButton crearBotonDesconectar() {
@@ -387,15 +410,22 @@ public class Dashboard extends JFrame {
                     "¿Estás seguro de que deseas cerrar la conexión?",
                     "Confirmar desconexión", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
-                try {
-                    if (tcpClient != null) tcpClient.disconnect();
-                    if (onDisconnect != null) onDisconnect.run();
-                } catch (Exception ex) { ex.printStackTrace(); }
+                realizarDesconexion();
                 new VentanaConexion(repository, onDisconnect).setVisible(true);
                 this.dispose();
             }
         });
         return btn;
+    }
+
+    private void realizarDesconexion() {
+        try {
+            if (tcpClient != null) tcpClient.disconnect();
+            if (udpClient != null) udpClient.disconnect();
+            if (onDisconnect != null) onDisconnect.run();
+        } catch (Exception ex) { 
+            ex.printStackTrace(); 
+        }
     }
 
     // ── Getters para SwingEventPublisher ─────────────────────────────────────

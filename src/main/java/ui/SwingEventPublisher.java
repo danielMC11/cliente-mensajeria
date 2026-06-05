@@ -77,10 +77,10 @@ public class SwingEventPublisher implements UIEventPublisher {
     }
 
     @Override
-    public void onUploadStatus(boolean success, String message) {
+    public void onUploadStatus(boolean success, String message, String targetUsername) {
         if (dashboard != null) {
             SwingUtilities.invokeLater(() ->
-                JOptionPane.showMessageDialog(dashboard, message, "Estado de Subida",
+                JOptionPane.showMessageDialog(dashboard, message + " " + targetUsername, "Estado de Subida",
                         success ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE)
             );
         }
@@ -146,6 +146,8 @@ public class SwingEventPublisher implements UIEventPublisher {
         });
     }
 
+
+
     // ── Mensaje entrante en tiempo real ───────────────────────────────────────
 
     /**
@@ -181,6 +183,15 @@ public class SwingEventPublisher implements UIEventPublisher {
                     dashboard.getTablaMensajes().setAnalysisResult(id, resultText);
                     dashboard.setPendingAnalyzeId(null);
                 }
+            });
+        }
+    }
+
+    @Override
+    public void onSendMessageAck(String status, String message) {
+        if (dashboard != null) {
+            SwingUtilities.invokeLater(() -> {
+                dashboard.showSendMessageAck(status, message);
             });
         }
     }

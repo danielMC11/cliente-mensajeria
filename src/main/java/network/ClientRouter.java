@@ -22,12 +22,7 @@ public class ClientRouter {
             String action = (String) map.get("action");
             
             if (action == null) {
-                if (map.containsKey("status")) {
-                    String status = (String) map.get("status");
-                    if (handlers.containsKey(status)) {
-                        handlers.get(status).handle(map);
-                    }
-                }
+
                 return;
             }
 

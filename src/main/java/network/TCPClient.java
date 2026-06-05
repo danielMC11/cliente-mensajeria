@@ -7,6 +7,7 @@ import domain.ports.UIEventPublisher;
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
@@ -19,7 +20,9 @@ public class TCPClient {
     private String ip;
     private int port;
     private String username;
-    private Queue<File> pendingFiles = new ConcurrentLinkedQueue<>();
+
+    // MODIFICADO: Ahora la cola almacena PendingFile en lugar de solo File
+    private Queue<PendingFile> pendingFiles = new ConcurrentLinkedQueue<>();
     private Queue<DownloadMetadata> pendingDownloadMetadata = new ConcurrentLinkedQueue<>();
 
     private ConnectionHandler connectionHandler;
@@ -56,9 +59,7 @@ public class TCPClient {
         payload.put("username", username);
 
         MessageRequest request = new MessageRequest("CONNECT", payload);
-        String json = JSONSerializer.serialize(request);
-
-        sendMessage(json);
+        sendMessage(JSONSerializer.serialize(request));
         requestInitialData();
     }
 
@@ -97,29 +98,16 @@ public class TCPClient {
         sendMessage(JSONSerializer.serialize(request));
     }
 
-    /**
-     * Solicita la lista de todos los servidores conocidos en el cluster (ALIVE/SUSPECTED/DOWN).
-     * Requerimiento: "Detección de servidores amigos: listar servidores conectados y desconectados."
-     */
     public void sendListPeerInfoAction() {
         MessageRequest request = new MessageRequest("LIST_PEER_INFO", new HashMap<>());
         sendMessage(JSONSerializer.serialize(request));
     }
 
-    /**
-     * Solicita los logs consolidados de todos los servidores de la red.
-     * Requerimiento: "Adicionar servicios para mostrar los logs de otros servidores."
-     */
     public void sendListPeerLogsAction() {
         MessageRequest request = new MessageRequest("LIST_PEER_LOGS", new HashMap<>());
         sendMessage(JSONSerializer.serialize(request));
     }
 
-    /**
-     * Envía un mensaje dirigido a un cliente específico.
-     * Si targetUsername es null o "Todos", se comporta como broadcast.
-     * Requerimiento: "Los documentos/mensajes se podrán enviar a un cliente en especial o a todos."
-     */
     public void sendDirectMessage(String targetUsername, String content) {
         if (repository != null) {
             repository.saveMessage(this.username, content);
@@ -128,10 +116,7 @@ public class TCPClient {
         Map<String, Object> payload = new HashMap<>();
         payload.put("username", this.username);
         payload.put("message", content);
-
-        if (targetUsername != null && !targetUsername.equals("Todos")) {
-            payload.put("targetUsername", targetUsername);
-        }
+        payload.put("targetUsername", targetUsername);
 
         MessageRequest request = new MessageRequest("SEND_MESSAGE", payload);
         sendMessage(JSONSerializer.serialize(request));
@@ -140,12 +125,12 @@ public class TCPClient {
     public void sendAnalyzeMessage(String content) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("mensaje", content);
-        
+
         MessageRequest request = new MessageRequest("ANALYZE_MESSAGE", payload);
         sendMessage(JSONSerializer.serialize(request));
     }
 
-    public void sendMessage(String message) {
+    public synchronized void sendMessage(String message) {
         if (out != null) {
             out.println(message);
             System.out.println("Mensaje enviado: " + message);
@@ -169,11 +154,7 @@ public class TCPClient {
         return null;
     }
 
-    /**
-     * Envía un mensaje de chat y lo guarda en la DB local H2.
-     */
     public void sendChatMessage(String content) {
-        // --- GUARDADO LOCAL ---
         if (repository != null) {
             repository.saveMessage(this.username, content);
         }
@@ -186,23 +167,31 @@ public class TCPClient {
         sendMessage(JSONSerializer.serialize(request));
     }
 
-    /**
-     * Prepara el envío de un archivo y guarda sus metadatos en la DB local H2.
-     * @param targetUsername Destinatario del archivo (o null para broadcast).
-     */
+    // NUEVA CLASE INTERNA: Para guardar el archivo y el usuario destino
+    private static class PendingFile {
+        File file;
+        String targetUsername;
+
+        PendingFile(File file, String targetUsername) {
+            this.file = file;
+            this.targetUsername = targetUsername;
+        }
+    }
+
     public void sendFile(File file, String targetUsername) {
-        pendingFiles.add(file);
+        // MODIFICADO: Guardar el objeto completo en la cola
+        pendingFiles.add(new PendingFile(file, targetUsername));
 
         String extension = "";
-        int i = file.getName().lastIndexOf('.');
+        String filename = file.getName();
+        int i = filename.lastIndexOf('.');
         if (i > 0) {
-            extension = file.getName().substring(i);
+            extension = filename.substring(i + 1);
         }
 
-        // --- GUARDADO LOCAL ---
         if (repository != null) {
             repository.saveDocumentMetadata(
-                    file.getName(),
+                    filename,
                     file.length(),
                     extension,
                     "application/octet-stream",
@@ -211,30 +200,35 @@ public class TCPClient {
         }
 
         Map<String, Object> payload = new HashMap<>();
-        payload.put("filename", file.getName());
+        payload.put("filename", filename);
         payload.put("size", file.length());
         payload.put("extension", extension);
         payload.put("mimeType", "application/octet-stream");
         payload.put("username", this.username);
-        
+
         if (targetUsername != null && !targetUsername.trim().isEmpty()) {
             payload.put("targetUsername", targetUsername);
         }
 
         MessageRequest request = new MessageRequest("UPLOAD_INIT", payload);
-        String json = JSONSerializer.serialize(request);
-        sendMessage(json);
+        sendMessage(JSONSerializer.serialize(request));
     }
 
     public void startFileTransfer(String token) {
-        File file = pendingFiles.poll();
-        if (file == null)
+        PendingFile pending = pendingFiles.poll();
+        if (pending == null)
             return;
+
+        File file = pending.file;
+        String targetUsername = pending.targetUsername;
 
         new Thread(() -> {
             System.out.println("Iniciando transferencia de subida (Nuevo Socket)...");
+
+            // Agregamos el InputStream del socket al try-with-resources
             try (Socket fileSocket = new Socket(ip, port);
                  OutputStream os = fileSocket.getOutputStream();
+                 InputStream is = fileSocket.getInputStream();
                  FileInputStream fis = new FileInputStream(file)) {
 
                 os.write((token + "\n").getBytes(StandardCharsets.UTF_8));
@@ -246,13 +240,30 @@ public class TCPClient {
                     os.write(buffer, 0, bytesRead);
                 }
                 os.flush();
-                System.out.println("Subida finalizada y socket de archivo cerrado.");
+
+                // 1. IMPORTANTE: Avisar al servidor que ya no enviaremos más bytes.
+                // Esto destraba el InputStream del servidor (hace que devuelva -1).
+                fileSocket.shutdownOutput();
+
+                // 2. Quedarnos esperando a que el servidor use su OutputStream
+                // para decirnos si todo salió bien.
+                BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+                String respuestaServidor = reader.readLine(); // El hilo se pausa aquí hasta que el servidor responda
+
+                if ("SUCCESS".equals(respuestaServidor)) {
+                    System.out.println("Subida finalizada, confirmada por el servidor.");
+                    uiPublisher.onUploadStatus(true, "Archivo enviado con exito para", targetUsername);
+                } else {
+                    System.out.println("El servidor rechazó el archivo o hubo un error.");
+                    uiPublisher.onUploadStatus(false, "Error en el servidor al guardar el archivo para", targetUsername);
+                }
+
             } catch (IOException e) {
+                uiPublisher.onUploadStatus(false, "Error de red en subida de archivo para", targetUsername);
                 System.err.println("Error en subida: " + e.getMessage());
             }
         }).start();
     }
-
     private static class DownloadMetadata {
         String docId;
         String filename;
@@ -331,8 +342,8 @@ public class TCPClient {
                 int bytesRead;
                 long totalRead = 0;
                 long lastUpdate = 0;
-                while (totalRead < size
-                        && (bytesRead = is.read(buffer, 0, (int) Math.min(buffer.length, size - totalRead))) != -1) {
+
+                while (totalRead < size && (bytesRead = is.read(buffer, 0, (int) Math.min(buffer.length, size - totalRead))) != -1) {
                     fos.write(buffer, 0, bytesRead);
                     totalRead += bytesRead;
 
@@ -344,6 +355,7 @@ public class TCPClient {
                 fos.flush();
                 success = (totalRead == size);
                 System.out.println("Descarga finalizada. Éxito: " + success);
+
             } catch (IOException e) {
                 System.err.println("Error en descarga: " + e.getMessage());
                 success = false;
@@ -355,7 +367,17 @@ public class TCPClient {
         }).start();
     }
 
+    public void sendDisconnectAction() {
+        Map<String, Object> payload = new HashMap<>();
+        if (this.username != null) {
+            payload.put("username", this.username);
+        }
+        MessageRequest request = new MessageRequest("DISCONNECT", payload);
+        sendMessage(JSONSerializer.serialize(request));
+    }
+
     public void disconnect() throws IOException {
+        sendDisconnectAction();
         if (connectionHandler != null)
             connectionHandler.stop();
         if (out != null)
