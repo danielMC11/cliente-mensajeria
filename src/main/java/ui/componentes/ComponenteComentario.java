@@ -8,7 +8,6 @@ import java.util.Map;
 
 public class ComponenteComentario extends JPanel {
 
-    // ── Paleta ────────────────────────────────────────────────────────────
     private static final Color COLOR_FONDO_PANEL    = new Color(248, 250, 255);
     private static final Color COLOR_BORDE          = new Color(200, 210, 225);
     private static final Color COLOR_ENCABEZADO_BG  = new Color(230, 237, 255);
@@ -21,13 +20,11 @@ public class ComponenteComentario extends JPanel {
     private static final Color COLOR_INPUT_BG       = Color.WHITE;
     private static final Color COLOR_INPUT_BORDE    = new Color(180, 195, 225);
 
-    // Colores de sentiment
     private static final Color COLOR_POSITIVO       = new Color(34, 139, 34);
     private static final Color COLOR_NEGATIVO       = new Color(200, 50, 50);
     private static final Color COLOR_NEUTRO         = new Color(130, 130, 130);
     private static final Color COLOR_SENTIMENT_BG   = new Color(240, 244, 255);
 
-    // ── Fuentes ───────────────────────────────────────────────────────────
     private static final Font FUENTE_ENCABEZADO = new Font("Segoe UI", Font.BOLD,  13);
     private static final Font FUENTE_USUARIO    = new Font("Segoe UI", Font.BOLD,  12);
     private static final Font FUENTE_COMENTARIO = new Font("Segoe UI", Font.PLAIN, 12);
@@ -35,7 +32,6 @@ public class ComponenteComentario extends JPanel {
     private static final Font FUENTE_CONFIDENCE = new Font("Segoe UI", Font.PLAIN, 11);
     private static final Font FUENTE_BTN        = new Font("Segoe UI", Font.BOLD,  12);
 
-    // ── Estado ────────────────────────────────────────────────────────────
     private final String archivoId;
     private final JPanel listaPanel;
     private final JTextArea areaTexto;
@@ -44,10 +40,6 @@ public class ComponenteComentario extends JPanel {
     public interface ComentarListener {
         void onComentar(String archivoId, String texto);
     }
-
-    // -----------------------------------------------------------------------
-    // Constructor
-    // -----------------------------------------------------------------------
 
     public ComponenteComentario(String archivoId) {
         this.archivoId = archivoId;
@@ -58,7 +50,6 @@ public class ComponenteComentario extends JPanel {
                 BorderFactory.createEmptyBorder(0, 0, 0, 0)
         ));
 
-        // Encabezado
         JLabel encabezado = new JLabel("  COMENTARIOS");
         encabezado.setFont(FUENTE_ENCABEZADO);
         encabezado.setForeground(COLOR_ENCABEZADO_FG);
@@ -70,7 +61,6 @@ public class ComponenteComentario extends JPanel {
         ));
         add(encabezado, BorderLayout.NORTH);
 
-        // Lista
         listaPanel = new JPanel();
         listaPanel.setLayout(new BoxLayout(listaPanel, BoxLayout.Y_AXIS));
         listaPanel.setBackground(COLOR_FONDO_PANEL);
@@ -83,7 +73,6 @@ public class ComponenteComentario extends JPanel {
         scroll.getViewport().setBackground(COLOR_FONDO_PANEL);
         add(scroll, BorderLayout.CENTER);
 
-        // Área de escritura
         JPanel panelEscritura = new JPanel(new BorderLayout(6, 0));
         panelEscritura.setBackground(COLOR_FONDO_PANEL);
         panelEscritura.setBorder(BorderFactory.createCompoundBorder(
@@ -128,23 +117,10 @@ public class ComponenteComentario extends JPanel {
         add(panelEscritura, BorderLayout.SOUTH);
     }
 
-    // -----------------------------------------------------------------------
-    // API pública
-    // -----------------------------------------------------------------------
-
     public void setComentarListener(ComentarListener listener) {
         this.comentarListener = listener;
     }
 
-    /**
-     * Carga la lista de comentarios.
-     * Cada mapa puede tener las claves:
-     *   "usuario"    → String
-     *   "texto"      → String
-     *   "fecha"      → String (opcional)
-     *   "sentiment"  → String: "POSITIVE" | "NEGATIVE" | "NEUTRAL" (opcional)
-     *   "confidence" → Number entre 0.0 y 1.0 (opcional)
-     */
     public void cargarComentarios(List<Map<String, Object>> comentarios) {
         listaPanel.removeAll();
 
@@ -186,14 +162,10 @@ public class ComponenteComentario extends JPanel {
 
     public String getArchivoId() { return archivoId; }
 
-    // -----------------------------------------------------------------------
-    // Construcción de fila de comentario
-    // -----------------------------------------------------------------------
-
     private JPanel crearFilaComentario(Map<String, Object> comentario) {
-        String usuario   = comentario.get("username")    != null ? comentario.get("username").toString()    : "Usuario";
-        String texto     = comentario.get("content")      != null ? comentario.get("content").toString()      : "";
-        String fecha     = comentario.get("created_at")      != null ? "  ·  " + comentario.get("created_at")       : "";
+        String usuario   = comentario.get("username")   != null ? comentario.get("username").toString()   : "Usuario";
+        String texto     = comentario.get("content")    != null ? comentario.get("content").toString()    : "";
+        String fecha     = comentario.get("created_at") != null ? "  ·  " + comentario.get("created_at") : "";
         String sentiment = comentario.get("sentiment")  != null ? comentario.get("sentiment").toString()  : null;
         Object confObj   = comentario.get("confidence");
 
@@ -204,7 +176,6 @@ public class ComponenteComentario extends JPanel {
         fila.setAlignmentX(Component.LEFT_ALIGNMENT);
         fila.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
 
-        // Nombre de usuario
         JLabel lblUsuario = new JLabel(usuario + fecha);
         lblUsuario.setFont(FUENTE_USUARIO);
         lblUsuario.setForeground(COLOR_USUARIO_FG);
@@ -212,7 +183,6 @@ public class ComponenteComentario extends JPanel {
         fila.add(lblUsuario);
         fila.add(Box.createVerticalStrut(3));
 
-        // Texto del comentario
         JTextArea txtComentario = new JTextArea(texto);
         txtComentario.setFont(FUENTE_COMENTARIO);
         txtComentario.setForeground(COLOR_TEXTO_FG);
@@ -226,7 +196,6 @@ public class ComponenteComentario extends JPanel {
         txtComentario.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         fila.add(txtComentario);
 
-        // Sentiment + Confidence (si están presentes)
         if (sentiment != null || confObj != null) {
             fila.add(Box.createVerticalStrut(6));
             fila.add(crearFilaSentiment(sentiment, confObj));
@@ -235,28 +204,23 @@ public class ComponenteComentario extends JPanel {
         return fila;
     }
 
-    /**
-     * Crea la fila visual de sentiment + confidence.
-     *
-     *  [😊 POSITIVE]   Confidence: ██████░░░░  87%
-     */
     private JPanel crearFilaSentiment(String sentiment, Object confObj) {
         JPanel fila = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         fila.setBackground(COLOR_FONDO_PANEL);
         fila.setAlignmentX(Component.LEFT_ALIGNMENT);
         fila.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
 
-        // Badge de sentiment
         if (sentiment != null) {
-            String emoji;
             Color color;
             switch (sentiment.toUpperCase()) {
-                case "POSITIVE": emoji = "😊"; color = COLOR_POSITIVO; break;
-                case "NEGATIVE": emoji = "😞"; color = COLOR_NEGATIVO; break;
-                default:         emoji = "😐"; color = COLOR_NEUTRO;   break;
+                case "POSITIVE":
+                case "POSITIVO": color = COLOR_POSITIVO; break;
+                case "NEGATIVE":
+                case "NEGATIVO": color = COLOR_NEGATIVO; break;
+                default:         color = COLOR_NEUTRO;   break;
             }
 
-            JLabel badgeSentiment = new JLabel(emoji + "  " + sentiment.toUpperCase());
+            JLabel badgeSentiment = new JLabel(sentiment.toUpperCase());
             badgeSentiment.setFont(FUENTE_SENTIMENT);
             badgeSentiment.setForeground(color);
             badgeSentiment.setBackground(COLOR_SENTIMENT_BG);
@@ -268,11 +232,10 @@ public class ComponenteComentario extends JPanel {
             fila.add(badgeSentiment);
         }
 
-        // Barra + porcentaje de confidence
         if (confObj != null) {
             try {
                 double conf = Double.parseDouble(confObj.toString());
-                int pct = (int) Math.round(conf * 100);
+                int pct = (int) Math.round(conf);
 
                 JLabel lblConf = new JLabel("Confidence:");
                 lblConf.setFont(FUENTE_CONFIDENCE);
@@ -281,7 +244,9 @@ public class ComponenteComentario extends JPanel {
 
                 fila.add(crearBarraConfianza(pct));
 
-                JLabel lblPct = new JLabel(pct + "%");
+                // Modificado para mostrar 3 decimales
+                String pctTexto = String.format(java.util.Locale.US, "%.3f%%", conf);
+                JLabel lblPct = new JLabel(pctTexto);
                 lblPct.setFont(FUENTE_SENTIMENT);
                 lblPct.setForeground(COLOR_TEXTO_FG);
                 fila.add(lblPct);
@@ -291,7 +256,6 @@ public class ComponenteComentario extends JPanel {
         return fila;
     }
 
-    /** Barra de progreso estilizada para mostrar el nivel de confianza. */
     private JPanel crearBarraConfianza(int porcentaje) {
         return new JPanel() {
             { setPreferredSize(new Dimension(80, 10)); setBackground(COLOR_FONDO_PANEL); }
@@ -303,11 +267,9 @@ public class ComponenteComentario extends JPanel {
 
                 int w = getWidth(), h = getHeight();
 
-                // Fondo
                 g2.setColor(new Color(210, 218, 235));
                 g2.fillRoundRect(0, 0, w, h, h, h);
 
-                // Relleno
                 int fill = (int) (w * porcentaje / 100.0);
                 Color barColor = porcentaje >= 70 ? COLOR_POSITIVO
                         : porcentaje >= 40 ? new Color(200, 150, 30)
@@ -319,10 +281,6 @@ public class ComponenteComentario extends JPanel {
             }
         };
     }
-
-    // -----------------------------------------------------------------------
-    // Helpers
-    // -----------------------------------------------------------------------
 
     private JSeparator crearSeparador() {
         JSeparator sep = new JSeparator(SwingConstants.HORIZONTAL);
@@ -362,11 +320,4 @@ public class ComponenteComentario extends JPanel {
         areaTexto.setText(placeholder);
         areaTexto.setForeground(new Color(160, 170, 190));
     }
-
-    /**
-     * Muestra el resultado del envío de un comentario.
-     * "SUCCESS" → agrega visualmente el comentario pendiente.
-     * Otro valor → muestra un aviso de error en el panel.
-     */
-
 }
