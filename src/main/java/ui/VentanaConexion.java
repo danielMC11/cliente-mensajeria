@@ -83,7 +83,6 @@ public class VentanaConexion extends JFrame {
                         router.registerHandler(new SendMessageAckHandler(uiPublisher));
                         router.registerHandler(new SendCommentAckHandler(uiPublisher));
                         router.registerHandler(new ListCommentsHandler(uiPublisher));
-                        router.registerHandler(new network.handlers.AnalyzeMessageAckHandler(uiPublisher));
 
                         TCPClient client = new TCPClient(ip, puerto, username, repository, uiPublisher);
                         client.connect();
@@ -126,7 +125,6 @@ public class VentanaConexion extends JFrame {
                         router.registerHandler(new NewMessageHandler(uiPublisher, "NEW_MESSAGE_ACK"));
                         router.registerHandler(new NewMessageHandler(uiPublisher, "NEW_MESSAGE"));
                         router.registerHandler(new SendMessageAckHandler(uiPublisher));
-                        router.registerHandler(new network.handlers.AnalyzeMessageAckHandler(uiPublisher));
 
                         UDPClient udpClient = new UDPClient(ip, puerto, username, repository, uiPublisher, router);
                         udpClient.connect();

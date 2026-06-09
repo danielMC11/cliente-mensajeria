@@ -23,8 +23,7 @@ public interface UIEventPublisher {
 
     /** Mensaje de texto recibido en tiempo real (privado o broadcast federado). */
     void onNewMessage(String message);
-    void onMessageAnalyzed(String status, String sentimiento, double confianza);
-    
+
     void onSendMessageAck(String status, String message);
 
     void SendCommentAckHandler(String status, String message);
@@ -46,14 +45,5 @@ public interface UIEventPublisher {
     /** Logs consolidados de todos los servidores (local + remotos). */
     void onPeerLogsReceived(List<Map<String, Object>> peerLogs);
 
-    // --- Eventos de Productos y Reseñas ---
 
-    /** Lista actualizada de productos (documentos mapeados como entidad Producto). */
-    void onProductosActualizados(List<Map<String, Object>> productos);
-
-    /** Lista actualizada de reseñas asociadas a un producto. */
-    void onResenasActualizadas(List<Map<String, Object>> resenas);
-
-    /** Resultado automático del análisis de sentimiento de una reseña específica. */
-    void onResenaAnalizada(String resenaId, String sentimiento, double confianza);
 }

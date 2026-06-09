@@ -55,7 +55,7 @@ public class SwingEventPublisher implements UIEventPublisher {
         if (dashboard != null && messages != null) {
             SwingUtilities.invokeLater(() -> {
                 try {
-                    dashboard.getPanelChat().updateMessages(messages);
+                    dashboard.getTablaMensajes().updateFiles(messages);
                 } catch (Exception ex) {
                     System.err.println("Error actualizando mensajes: " + ex.getMessage());
                 }
@@ -68,7 +68,7 @@ public class SwingEventPublisher implements UIEventPublisher {
         if (dashboard != null && documents != null) {
             SwingUtilities.invokeLater(() -> {
                 try {
-                    dashboard.getPanelProductos().updateProductos(documents);
+                    dashboard.getTablaArchivos().updateFiles(documents);
                 } catch (Exception ex) {
                     System.err.println("Error actualizando documentos: " + ex.getMessage());
                 }
@@ -167,18 +167,7 @@ public class SwingEventPublisher implements UIEventPublisher {
         });
     }
 
-    @Override
-    public void onMessageAnalyzed(String status, String sentimiento, double confianza) {
-        if (dashboard != null) {
-            SwingUtilities.invokeLater(() -> {
-                String id = dashboard.getPendingAnalyzeId();
-                if (id != null) {
-                    dashboard.getPanelResenas().actualizarSentimiento(id, sentimiento, confianza);
-                    dashboard.setPendingAnalyzeId(null);
-                }
-            });
-        }
-    }
+
 
     @Override
     public void onSendMessageAck(String status, String message) {
@@ -331,40 +320,8 @@ public class SwingEventPublisher implements UIEventPublisher {
         return v != null ? v.toString() : "N/A";
     }
 
-    // ── Eventos de Productos y Reseñas ────────────────────────────────────────
 
-    @Override
-    public void onProductosActualizados(List<Map<String, Object>> productos) {
-        if (dashboard != null && productos != null) {
-            SwingUtilities.invokeLater(() -> {
-                try {
-                    dashboard.getPanelProductos().updateProductos(productos);
-                } catch (Exception ex) {
-                    System.err.println("Error actualizando productos: " + ex.getMessage());
-                }
-            });
-        }
-    }
 
-    @Override
-    public void onResenasActualizadas(List<Map<String, Object>> resenas) {
-        if (dashboard != null && resenas != null) {
-            SwingUtilities.invokeLater(() -> {
-                try {
-                    dashboard.getPanelResenas().updateResenas(resenas);
-                } catch (Exception ex) {
-                    System.err.println("Error actualizando reseñas: " + ex.getMessage());
-                }
-            });
-        }
-    }
 
-    @Override
-    public void onResenaAnalizada(String resenaId, String sentimiento, double confianza) {
-        if (dashboard != null) {
-            SwingUtilities.invokeLater(() -> {
-                dashboard.getPanelResenas().actualizarSentimiento(resenaId, sentimiento, confianza);
-            });
-        }
-    }
+
 }
