@@ -225,37 +225,48 @@ public class TCPClient {
         new Thread(() -> {
             System.out.println("Iniciando transferencia de subida (Nuevo Socket)...");
 
-            // Agregamos el InputStream del socket al try-with-resources
-            try (Socket fileSocket = new Socket(ip, port);
-                 OutputStream os = fileSocket.getOutputStream();
-                 InputStream is = fileSocket.getInputStream();
-                 FileInputStream fis = new FileInputStream(file)) {
+            // 1. Instanciamos el socket y aplicamos las configuraciones primero
+            try (Socket fileSocket = new Socket(ip, port)) {
 
-                os.write((token + "\n").getBytes(StandardCharsets.UTF_8));
-                os.flush();
+                // --- INICIO DE MODIFICACIONES ---
+                // Activa el KeepAlive de TCP. Esto envía paquetes "fantasma" para
+                // evitar que Windows, el router o el firewall cierren la conexión por inactividad.
+                fileSocket.setKeepAlive(true);
 
-                byte[] buffer = new byte[8192];
-                int bytesRead;
-                while ((bytesRead = fis.read(buffer)) != -1) {
-                    os.write(buffer, 0, bytesRead);
-                }
-                os.flush();
+                // Configura el Timeout en 10 minutos (600,000 milisegundos).
+                // Obliga al cliente a ser paciente mientras el servidor cifra la OVA.
+                fileSocket.setSoTimeout(600000);
+                // --- FIN DE MODIFICACIONES ---
 
-                // 1. IMPORTANTE: Avisar al servidor que ya no enviaremos más bytes.
-                // Esto destraba el InputStream del servidor (hace que devuelva -1).
-                fileSocket.shutdownOutput();
+                // 2. Ahora sí, abrimos los streams dentro de otro try-with-resources
+                try (OutputStream os = fileSocket.getOutputStream();
+                     InputStream is = fileSocket.getInputStream();
+                     FileInputStream fis = new FileInputStream(file)) {
 
-                // 2. Quedarnos esperando a que el servidor use su OutputStream
-                // para decirnos si todo salió bien.
-                BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
-                String respuestaServidor = reader.readLine(); // El hilo se pausa aquí hasta que el servidor responda
+                    os.write((token + "\n").getBytes(StandardCharsets.UTF_8));
+                    os.flush();
 
-                if ("SUCCESS".equals(respuestaServidor)) {
-                    System.out.println("Subida finalizada, confirmada por el servidor.");
-                    uiPublisher.onUploadStatus(true, "Archivo enviado con exito para", targetUsername);
-                } else {
-                    System.out.println("El servidor rechazó el archivo o hubo un error.");
-                    uiPublisher.onUploadStatus(false, "Error en el servidor al guardar el archivo para", targetUsername);
+                    byte[] buffer = new byte[8192];
+                    int bytesRead;
+                    while ((bytesRead = fis.read(buffer)) != -1) {
+                        os.write(buffer, 0, bytesRead);
+                    }
+                    os.flush();
+
+                    // IMPORTANTE: Avisar al servidor que ya no enviaremos más bytes.
+                    fileSocket.shutdownOutput();
+
+                    // Quedarnos esperando a que el servidor termine de cifrar y nos responda
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+                    String respuestaServidor = reader.readLine(); // El hilo esperará aquí hasta 10 minutos
+
+                    if ("SUCCESS".equals(respuestaServidor)) {
+                        System.out.println("Subida finalizada, confirmada por el servidor.");
+                        uiPublisher.onUploadStatus(true, "Archivo enviado con exito para", targetUsername);
+                    } else {
+                        System.out.println("El servidor rechazó el archivo o hubo un error.");
+                        uiPublisher.onUploadStatus(false, "Error en el servidor al guardar el archivo para", targetUsername);
+                    }
                 }
 
             } catch (IOException e) {

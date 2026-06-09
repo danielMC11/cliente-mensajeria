@@ -14,7 +14,7 @@ public class SendCommentAckHandler implements MessageHandler {
 
     @Override
     public String getActionType() {
-        return "REGISTER_COMMENT_ACK";
+        return "COMMENT_DOCUMENT_ACK";
     }
 
     @Override
@@ -22,7 +22,7 @@ public class SendCommentAckHandler implements MessageHandler {
         if (payload == null) return;
         String status = String.valueOf(payload.getOrDefault("status", "?"));
         String message = String.valueOf(payload.getOrDefault("message", ""));
-        System.out.println("[REGISTER_COMMENT_ACK] " + status + ": " + message);
+        System.out.println("[COMMENT_DOCUMENT_ACK] " + status + ": " + message);
 
         uiPublisher.SendCommentAckHandler(status, message);
     }
