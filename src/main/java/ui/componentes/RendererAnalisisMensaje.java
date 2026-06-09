@@ -40,6 +40,10 @@ public class RendererAnalisisMensaje extends JPanel implements TableCellRenderer
             lblResultado.setText(val);
             lblResultado.setForeground(new Color(0, 150, 60));
             add(lblResultado);
+        } else if (val.startsWith("No calificable") || val.startsWith("NO_CALIFICABLE")) {
+            lblResultado.setText(val);
+            lblResultado.setForeground(Color.GRAY);
+            add(lblResultado);
         } else {
             lblResultado.setText(val);
             lblResultado.setForeground(new Color(200, 30, 30));

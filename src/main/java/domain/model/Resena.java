@@ -9,7 +9,7 @@ public class Resena {
 
     /** Resultado del análisis de sentimiento. */
     public enum Sentimiento {
-        PENDIENTE, POSITIVO, NEGATIVO
+        PENDIENTE, POSITIVO, NEGATIVO, NO_CALIFICABLE
     }
 
     private final String id;
@@ -47,6 +47,8 @@ public class Resena {
                 resena.sentimiento = Sentimiento.POSITIVO;
             } else if ("Negativo".equalsIgnoreCase(sent)) {
                 resena.sentimiento = Sentimiento.NEGATIVO;
+            } else if ("No calificable".equalsIgnoreCase(sent) || "NO_CALIFICABLE".equalsIgnoreCase(sent)) {
+                resena.sentimiento = Sentimiento.NO_CALIFICABLE;
             }
         }
         Object conf = map.get("confianza_porcentaje");
