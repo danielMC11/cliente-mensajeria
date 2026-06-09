@@ -27,6 +27,8 @@ public interface UIEventPublisher {
     
     void onSendMessageAck(String status, String message);
 
+    void SendCommentAckHandler(String status, String message);
+    void onCommentsUpdated(List<Map<String, Object>> comments);
     /** El servidor cerró la conexión TCP (apagado, caída de red, etc.). */
     void onServerDisconnected();
 

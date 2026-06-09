@@ -36,7 +36,7 @@ public class Dashboard extends JFrame {
 
     // Layout
     private final CardLayout cardLayout = new CardLayout();
-    private final JPanel pnlCartas = new JPanel(cardLayout);
+    private final JPanel pnlCartas;
     private final JRadioButton rbArchivos;
     private final JRadioButton rbMensajes;
     private JTabbedPane tabsPane;  // Campo para que los listeners de toolbar lo referencien
@@ -46,9 +46,8 @@ public class Dashboard extends JFrame {
     private final ComponenteLogs        panelLogs;
     private final ComponenteServidores  panelServidores;
     private final ComponentePeerLogs    panelPeerLogs;
-    private final ComponenteTablaProductos panelProductos;
-    private final ComponenteChat        panelChat;
-    private final ComponentePanelResenas panelResenas;
+    private final ComponenteTablaArchivos tablaArchivos;
+    private final ComponenteTablaMensajes tablaMensajes;
 
     // Red
     private final TCPClient  tcpClient;
@@ -92,55 +91,42 @@ public class Dashboard extends JFrame {
         panelLogs       = new ComponenteLogs();
         panelServidores = new ComponenteServidores();
         panelPeerLogs   = new ComponentePeerLogs();
-        panelProductos  = new ComponenteTablaProductos();
-        panelChat       = new ComponenteChat();
-        panelResenas    = new ComponentePanelResenas();
+        tablaArchivos   = new ComponenteTablaArchivos();
 
-        // Configurar ComponenteChat
-        panelChat.setUsername(username);
-        panelChat.setEnviarListener((targetUsername, contenido) -> {
-            if (tcpClient != null) {
-                if (targetUsername == null) tcpClient.sendDirectMessage(null, contenido);
-                else tcpClient.sendDirectMessage(targetUsername, contenido);
-            } else if (udpClient != null) {
-                if (targetUsername == null) udpClient.sendDirectMessage(null, contenido);
-                else udpClient.sendDirectMessage(targetUsername, contenido);
+        // Conectar listener de comentarios en tablaArchivos
+        tablaArchivos.setArchivoActionListener(new ComponenteTablaArchivos.ArchivoActionListener() {
+            @Override
+            public void onVerComentarios(String archivoId, ComponenteComentario panelComentarios) {
+                // Solicitar comentarios al servidor
+                if (tcpClient != null) {
+                    tcpClient.sendListComments(Long.parseLong(archivoId));
+                } else if (udpClient != null) {
+                    udpClient.sendActionAsync("LIST_COMMENTS",
+                            java.util.Map.of("document_id", Long.parseLong(archivoId)));
+                }
+            }
+
+            @Override
+            public void onComentar(String archivoId, String texto) {
+                if (tcpClient != null) {
+                    tcpClient.sendComment(archivoId, texto);
+                } else if (udpClient != null) {
+                    udpClient.sendActionAsync("COMMENT_DOCUMENT",
+                            java.util.Map.of("documentId", Long.parseLong(archivoId),
+                                    "content", texto));
+                }
             }
         });
 
-        // Configurar navegación de reseñas
-        panelProductos.setResenasListener((productoId, productoNombre) -> {
-            panelResenas.setProductoActual(productoId, productoNombre);
-            cardLayout.show(pnlCartas, "PANEL_RESENAS");
-            if (tcpClient != null) {
-                tcpClient.sendListResenasAction(productoId);
-            } else if (udpClient != null) {
-                udpClient.sendListResenasAction(productoId);
-            }
-        });
-
-        panelResenas.setVolverListener(() -> {
-            cardLayout.show(pnlCartas, "TABLA_PRODUCTOS");
-            // Se puede pedir refrescar productos aquí si es necesario
-        });
-
-        panelResenas.setPublicarListener((productoId, contenido) -> {
-            // Mostrar la reseña inmediatamente localmente en estado PENDIENTE
-            panelResenas.agregarResenaLocal("", this.username, contenido);
-            if (tcpClient != null) {
-                tcpClient.sendResena(productoId, contenido);
-            } else if (udpClient != null) {
-                udpClient.sendResena(productoId, contenido);
-            }
-        });
+        tablaMensajes   = new ComponenteTablaMensajes();
 
         // ── Centro: CardLayout ──────────────────────────────────────────────
-        pnlCartas.add(panelProductos, "TABLA_PRODUCTOS");
-        pnlCartas.add(panelChat, "TABLA_MENSAJES");
-        pnlCartas.add(panelResenas, "PANEL_RESENAS");
+        pnlCartas = new JPanel(cardLayout);
+        pnlCartas.add(tablaArchivos, "TABLA_ARCHIVOS");
+        pnlCartas.add(tablaMensajes, "TABLA_MENSAJES");
 
-        rbArchivos = new JRadioButton("Productos", true);
-        rbMensajes = new JRadioButton("Chat General");
+        rbArchivos = new JRadioButton("Archivos", true);
+        rbMensajes = new JRadioButton("Mensajes");
         ButtonGroup grupo = new ButtonGroup();
         grupo.add(rbArchivos);
         grupo.add(rbMensajes);
@@ -188,12 +174,6 @@ public class Dashboard extends JFrame {
 
         // Refresh inicial de clientes
         panelClientes.setRefreshAction(e -> enviarPeticion("LIST_CLIENTS"));
-        
-        // Listener para actualizar destinatarios en el chat
-        Timer t = new Timer(2000, e -> {
-            panelChat.actualizarDestinatarios(panelClientes.getCurrentUsernames());
-        });
-        t.start();
 
         setLocationRelativeTo(null);
     }
@@ -212,7 +192,7 @@ public class Dashboard extends JFrame {
 
         btnFiltrar.addActionListener(e -> {
             if (rbArchivos.isSelected()) {
-                cardLayout.show(pnlCartas, "TABLA_PRODUCTOS");
+                cardLayout.show(pnlCartas, "TABLA_ARCHIVOS");
                 enviarPeticion("LIST_DOCUMENTS");
             } else {
                 cardLayout.show(pnlCartas, "TABLA_MENSAJES");
@@ -498,13 +478,22 @@ public class Dashboard extends JFrame {
         }
     }
 
+    /** Llamado por SwingEventPublisher.SendCommentAckHandler */
+    public void onSendCommentAck(String status, String message) {
+            tablaArchivos.mostrarAck(status, message);
+    }
+
+    /** Llamado por SwingEventPublisher.onCommentsUpdated */
+    public void onCommentsUpdated(String docId, List<Map<String, Object>> comments) {
+        tablaArchivos.actualizarComentarios(docId, comments);
+    }
+
     public ComponenteClientes   getPanelClientes()   { return panelClientes; }
     public ComponenteLogs       getPanelLogs()       { return panelLogs; }
     public ComponenteServidores getPanelServidores() { return panelServidores; }
     public ComponentePeerLogs   getPanelPeerLogs()   { return panelPeerLogs; }
-    public ComponenteTablaProductos getPanelProductos()  { return panelProductos; }
-    public ComponenteChat           getPanelChat()       { return panelChat; }
-    public ComponentePanelResenas   getPanelResenas()    { return panelResenas; }
+    public ComponenteTablaArchivos getTablaArchivos()  { return tablaArchivos; }
+    public ComponenteTablaMensajes getTablaMensajes()  { return tablaMensajes; }
     public TCPClient getTcpClient() { return tcpClient; }
     public UDPClient getUdpClient() { return udpClient; }
 }

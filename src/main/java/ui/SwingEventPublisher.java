@@ -190,6 +190,53 @@ public class SwingEventPublisher implements UIEventPublisher {
     }
 
     @Override
+    public void SendCommentAckHandler(String status, String message) {
+        if (dashboard != null) {
+            SwingUtilities.invokeLater(() -> {
+                dashboard.onSendCommentAck(status, message);
+            });
+        }
+    }
+
+    @Override
+    public void onCommentsUpdated(List<Map<String, Object>> comments) {
+        if (dashboard != null && comments != null) {
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    // El docId viene en cada comentario como "document_id" o "documentId"
+                    String docId = null;
+                    if (!comments.isEmpty()) {
+                        Object rawId = comments.get(0).get("document_id");
+                        if (rawId == null) rawId = comments.get(0).get("documentId");
+
+                        if (rawId != null) {
+                            if (rawId instanceof Number) {
+                                // Si es un Double/Long de JSON (ej: 1.0), lo convierte en "1"
+                                docId = String.valueOf(((Number) rawId).longValue());
+                            } else {
+                                // Por si acaso viniera ya como un String "1.0" de texto
+                                try {
+                                    docId = String.valueOf((long) Double.parseDouble(rawId.toString().trim()));
+                                } catch (NumberFormatException e) {
+                                    docId = rawId.toString().trim(); // Fallback si es texto puro
+                                }
+                            }
+                        }
+                    }
+                    // Fallback: usar el id pendiente guardado en dashboard
+                    if (docId == null) docId = dashboard.getPendingAnalyzeId();
+
+                    if (docId != null) {
+                        dashboard.onCommentsUpdated(docId, comments);
+                    }
+                } catch (Exception ex) {
+                    System.err.println("Error actualizando comentarios: " + ex.getMessage());
+                }
+            });
+        }
+    }
+
+    @Override
     public void onServerDisconnected() {
         SwingUtilities.invokeLater(() -> {
             JOptionPane.showMessageDialog(
