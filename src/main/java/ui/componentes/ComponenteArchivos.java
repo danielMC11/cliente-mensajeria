@@ -2,11 +2,10 @@ package ui.componentes;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
 import java.util.List;
 import java.util.Map;
 
-public class ComponenteTablaArchivos extends JPanel {
+public class ComponenteArchivos extends JPanel {
 
     private static final Color COLOR_FONDO       = new Color(245, 247, 250);
     private static final Color COLOR_TARJETA     = Color.WHITE;
@@ -33,7 +32,7 @@ public class ComponenteTablaArchivos extends JPanel {
     // Rastrea el panel de comentarios actualmente abierto por docId
     private final java.util.Map<String, ComponenteComentario> panelesPorId = new java.util.HashMap<>();
 
-    public ComponenteTablaArchivos() {
+    public ComponenteArchivos() {
         setLayout(new BorderLayout());
         setBackground(COLOR_FONDO);
 

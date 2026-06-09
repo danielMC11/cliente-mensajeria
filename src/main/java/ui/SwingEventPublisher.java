@@ -30,6 +30,9 @@ public class SwingEventPublisher implements UIEventPublisher {
             SwingUtilities.invokeLater(() -> {
                 try {
                     dashboard.getPanelClientes().updateClients(clients);
+                    // Sincronizar destinatarios del ComponenteChat
+                    dashboard.getComponenteChat().actualizarDestinatarios(
+                            dashboard.getPanelClientes().getCurrentUsernames());
                 } catch (Exception ex) {
                     System.err.println("Error actualizando clientes: " + ex.getMessage());
                 }
@@ -56,6 +59,8 @@ public class SwingEventPublisher implements UIEventPublisher {
             SwingUtilities.invokeLater(() -> {
                 try {
                     dashboard.getTablaMensajes().updateFiles(messages);
+                    // Alimentar el ComponenteChat con los mensajes históricos
+                    dashboard.getComponenteChat().updateMessages(messages);
                 } catch (Exception ex) {
                     System.err.println("Error actualizando mensajes: " + ex.getMessage());
                 }
@@ -151,15 +156,13 @@ public class SwingEventPublisher implements UIEventPublisher {
     // ── Mensaje entrante en tiempo real ───────────────────────────────────────
 
     /**
-     * Muestra un mensaje recibido (privado o broadcast federado) en un diálogo
-     * emergente para que el destinatario lo vea inmediatamente.
-     * También refresca la pestaña de mensajes históricos.
+     * Mensaje de texto recibido en tiempo real (privado o broadcast).
+     * Refresca el historial completo del servidor para que el ComponenteChat
+     * muestre el nuevo mensaje como burbuja.
      */
     @Override
     public void onNewMessage(String message) {
         if (dashboard == null) return;
-        // Refrescar la tabla de mensajes silenciosamente (sin popup)
-        // El mensaje aparecerá en la tabla gracias al filtro por usuario en LIST_MESSAGES
         SwingUtilities.invokeLater(() -> {
             if (dashboard.getTcpClient() != null || dashboard.getUdpClient() != null) {
                 dashboard.enviarPeticion("LIST_MESSAGES");
@@ -182,7 +185,7 @@ public class SwingEventPublisher implements UIEventPublisher {
     public void SendCommentAckHandler(String status, String message) {
         if (dashboard != null) {
             SwingUtilities.invokeLater(() -> {
-                dashboard.onSendCommentAck(status, message);
+                dashboard.showSendCommentAck(status, message);
             });
         }
     }

@@ -49,7 +49,6 @@ public class ComponenteTablaMensajes extends JPanel {
         tcm.getColumn(4).setPreferredWidth(120);
         tcm.getColumn(4).setMinWidth(120);
         tcm.getColumn(4).setCellRenderer(new RendererAnalisisMensaje());
-        tcm.getColumn(4).setCellEditor(new EditorAnalisisMensaje(tabla));
 
         // Descargar
         tcm.getColumn(5).setPreferredWidth(220);

@@ -38,6 +38,10 @@ public class TCPClient {
         this.uiPublisher = uiPublisher;
     }
 
+    public String getIp() {
+        return ip;
+    }
+
     public void connect() throws IOException {
         System.out.println("Intentando conectar a " + ip + ":" + port + "...");
         socket = new Socket(ip, port);
@@ -57,6 +61,7 @@ public class TCPClient {
     private void sendConnectAction() {
         Map<String, Object> payload = new HashMap<>();
         payload.put("username", username);
+        payload.put("protocol", "TCP");
 
         MessageRequest request = new MessageRequest("CONNECT", payload);
         sendMessage(JSONSerializer.serialize(request));

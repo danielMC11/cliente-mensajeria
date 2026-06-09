@@ -21,11 +21,8 @@ public class ListMessagesHandler implements MessageHandler {
     public void handle(Map<String, Object> payload) {
         if (payload != null && payload.containsKey("mensajes")) {
             List<Map<String, Object>> mensajes = (List<Map<String, Object>>) payload.get("mensajes");
-            // Filtramos los mensajes que no tienen productId (son mensajes de chat)
-            List<Map<String, Object>> chatMessages = mensajes.stream()
-                .filter(m -> !m.containsKey("productId") || m.get("productId") == null)
-                .collect(java.util.stream.Collectors.toList());
-            uiPublisher.onMessagesUpdated(chatMessages);
+
+            uiPublisher.onMessagesUpdated(mensajes);
         }
     }
 }

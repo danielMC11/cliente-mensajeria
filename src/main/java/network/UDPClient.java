@@ -30,6 +30,10 @@ public class UDPClient {
         this.router = router;
     }
 
+    public String getIp() {
+        return ip;
+    }
+
     // Método genérico para disparar peticiones UDP en un hilo nuevo
     public void sendActionAsync(String action, Map<String, Object> payload) {
         new Thread(() -> {
@@ -40,8 +44,8 @@ public class UDPClient {
                 InetAddress serverAddress = InetAddress.getByName(ip);
                 DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, serverAddress, port);
                 
-                int maxRetries = 3;
-                int timeoutMs = 2000;
+                int maxRetries = 1;
+                int timeoutMs = 10000;
                 socket.setSoTimeout(timeoutMs);
                 
                 boolean receivedAck = false;
@@ -83,6 +87,7 @@ public class UDPClient {
     public void connect() {
         Map<String, Object> payload = new HashMap<>();
         payload.put("username", username);
+        payload.put("protocol", "UDP");
         sendActionAsync("CONNECT", payload);
     }
 
@@ -94,56 +99,31 @@ public class UDPClient {
         Map<String, Object> payload = new HashMap<>();
         payload.put("username", this.username);
         payload.put("message", content);
-
-        if (targetUsername != null && !targetUsername.equals("Todos") && !targetUsername.equals("— Todos —")) {
-            payload.put("targetUsername", targetUsername);
-        }
+        payload.put("targetUsername", targetUsername);
 
         sendActionAsync("SEND_MESSAGE", payload);
     }
 
-    public void sendChatMessage(String content) {
+    public void sendComment(String documentId, String content) {
         if (repository != null) {
             repository.saveMessage(this.username, content);
         }
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("username", this.username);
-        payload.put("message", content);
-        sendActionAsync("SEND_MESSAGE", payload);
-    }
-
-    public void sendAnalyzeMessage(String content) {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("mensaje", content);
-        sendActionAsync("ANALYZE_MESSAGE", payload);
-    }
-
-    public void sendResena(String productoId, String contenido) {
-        if (repository != null) {
-            repository.saveResena(productoId, this.username, contenido);
-        }
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("username", this.username);
-        payload.put("message", contenido);
-        payload.put("productId", productoId);
+        payload.put("content", content);
+        payload.put("documentId", documentId);
 
-        sendActionAsync("SEND_MESSAGE", payload);
-
-        // Análisis automático
-        sendAnalyzeMessage(contenido);
+        sendActionAsync("COMMENT_DOCUMENT", payload);
     }
 
-    public void sendListResenasAction(String productoId) {
+    public void sendListComments(Long documentId) {
         Map<String, Object> payload = new HashMap<>();
-        if (this.username != null) {
-            payload.put("username", this.username);
-        }
-        if (productoId != null) {
-            payload.put("productId", productoId);
-        }
-        sendActionAsync("LIST_MESSAGES", payload);
+        payload.put("document_id", documentId);
+        sendActionAsync("LIST_COMMENTS", payload);
     }
+
+
 
     public void sendFile(java.io.File file, String targetUsername) {
         pendingFiles.add(file);
@@ -176,9 +156,6 @@ public class UDPClient {
         sendActionAsync("UPLOAD_INIT", payload);
     }
 
-    public void sendUploadConfirmation(Map<String, Object> payload) {
-        sendActionAsync("UPLOAD_CONFIRMATION", payload);
-    }
 
     public void startFileTransfer(String token) {
         java.io.File file = pendingFiles.poll();

@@ -46,8 +46,9 @@ public class Dashboard extends JFrame {
     private final ComponenteLogs        panelLogs;
     private final ComponenteServidores  panelServidores;
     private final ComponentePeerLogs    panelPeerLogs;
-    private final ComponenteTablaArchivos tablaArchivos;
+    private final ComponenteArchivos tablaArchivos;
     private final ComponenteTablaMensajes tablaMensajes;
+    private final ui.componentes.ComponenteChat componenteChat;
 
     // Red
     private final TCPClient  tcpClient;
@@ -91,39 +92,50 @@ public class Dashboard extends JFrame {
         panelLogs       = new ComponenteLogs();
         panelServidores = new ComponenteServidores();
         panelPeerLogs   = new ComponentePeerLogs();
-        tablaArchivos   = new ComponenteTablaArchivos();
+        tablaArchivos   = new ComponenteArchivos();
 
         // Conectar listener de comentarios en tablaArchivos
-        tablaArchivos.setArchivoActionListener(new ComponenteTablaArchivos.ArchivoActionListener() {
+        tablaArchivos.setArchivoActionListener(new ComponenteArchivos.ArchivoActionListener() {
             @Override
             public void onVerComentarios(String archivoId, ComponenteComentario panelComentarios) {
                 // Solicitar comentarios al servidor
                 if (tcpClient != null) {
                     tcpClient.sendListComments(Long.parseLong(archivoId));
                 } else if (udpClient != null) {
-                    udpClient.sendActionAsync("LIST_COMMENTS",
-                            java.util.Map.of("document_id", Long.parseLong(archivoId)));
+                    udpClient.sendListComments(Long.parseLong(archivoId));
                 }
             }
 
             @Override
             public void onComentar(String archivoId, String texto) {
+                // Guardar el docId para recargar comentarios cuando llegue el ACK
+                pendingCommentDocId = archivoId;
                 if (tcpClient != null) {
                     tcpClient.sendComment(archivoId, texto);
                 } else if (udpClient != null) {
-                    udpClient.sendActionAsync("COMMENT_DOCUMENT",
-                            java.util.Map.of("documentId", Long.parseLong(archivoId),
-                                    "content", texto));
+                    udpClient.sendComment(archivoId, texto);
                 }
             }
         });
 
         tablaMensajes   = new ComponenteTablaMensajes();
 
+        // ── ComponenteChat ─────────────────────────────────────────────────
+        componenteChat = new ui.componentes.ComponenteChat();
+        componenteChat.setUsername(username + " (" + (tcpClient != null ? tcpClient.getIp() : udpClient.getIp()) + ")");
+        componenteChat.setEnviarListener((targetUsername, contenido) -> {
+            String finalTarget = (targetUsername == null) ? "ALL" : targetUsername;
+            if (tcpClient != null) {
+                tcpClient.sendDirectMessage(finalTarget, contenido);
+            } else if (udpClient != null) {
+                udpClient.sendDirectMessage(finalTarget, contenido);
+            }
+        });
+
         // ── Centro: CardLayout ──────────────────────────────────────────────
         pnlCartas = new JPanel(cardLayout);
         pnlCartas.add(tablaArchivos, "TABLA_ARCHIVOS");
-        pnlCartas.add(tablaMensajes, "TABLA_MENSAJES");
+        pnlCartas.add(componenteChat, "TABLA_MENSAJES");
 
         rbArchivos = new JRadioButton("Archivos", true);
         rbMensajes = new JRadioButton("Mensajes");
@@ -469,18 +481,18 @@ public class Dashboard extends JFrame {
     public void setPendingAnalyzeId(String id) { this.pendingAnalyzeId = id; }
     public String getPendingAnalyzeId() { return this.pendingAnalyzeId; }
 
-    public void analizarMensaje(String docId, String contenido) {
-        setPendingAnalyzeId(docId);
-        if (tcpClient != null) {
-            tcpClient.sendAnalyzeMessage(contenido);
-        } else if (udpClient != null) {
-            udpClient.sendAnalyzeMessage(contenido);
-        }
-    }
+    // Documento al que pertenece el último comentario enviado
+    private String pendingCommentDocId;
 
-    /** Llamado por SwingEventPublisher.SendCommentAckHandler */
-    public void onSendCommentAck(String status, String message) {
-            tablaArchivos.mostrarAck(status, message);
+
+    public void showSendCommentAck(String status, String message) {
+        if ("SUCCESS".equals(status)) {
+            JOptionPane.showMessageDialog(this, "Comentario enviado exitosamente.",
+                    "Comentario Enviado", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this, "Error al enviar comentario: " + message,
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     /** Llamado por SwingEventPublisher.onCommentsUpdated */
@@ -492,8 +504,9 @@ public class Dashboard extends JFrame {
     public ComponenteLogs       getPanelLogs()       { return panelLogs; }
     public ComponenteServidores getPanelServidores() { return panelServidores; }
     public ComponentePeerLogs   getPanelPeerLogs()   { return panelPeerLogs; }
-    public ComponenteTablaArchivos getTablaArchivos()  { return tablaArchivos; }
+    public ComponenteArchivos getTablaArchivos()  { return tablaArchivos; }
     public ComponenteTablaMensajes getTablaMensajes()  { return tablaMensajes; }
+    public ui.componentes.ComponenteChat getComponenteChat() { return componenteChat; }
     public TCPClient getTcpClient() { return tcpClient; }
     public UDPClient getUdpClient() { return udpClient; }
 }
